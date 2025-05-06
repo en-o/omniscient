@@ -1,4 +1,31 @@
-# GoFrame Template For SingleRepo
 
-Quick Start: 
-- https://goframe.org/quick
+
+# 文档
+[GoFrame github](https://github.com/gogf/gf)
+[GoFrame 中文doc](https://goframe.org.cn/quick/install)
+
+# 目录
+https://goframe.org.cn/docs/design/project-structure
+# 项目目录结构说明
+
+| 目录/文件名称       | 说明                | 描述                                                                 |
+|---------------------|---------------------|----------------------------------------------------------------------|
+| **api**             | 对外接口            | 对外提供服务的输入/输出数据结构定义。考虑到版本管理需要，往往以 `api/xxx/v1...` 存在。 |
+| **hack**            | 工具脚本            | 存放项目开发工具、脚本等内容（如 CLI 工具配置、shell/bat 脚本等）。               |
+| **internal**        | 内部逻辑            | 业务逻辑存放目录（通过 Golang internal 特性对外部隐藏可见性）。                  |
+| ├─ cmd              | 入口指令            | 命令行管理目录，可维护多个命令行。                                               |
+| ├─ consts           | 常量定义            | 项目所有常量定义。                                                             |
+| ├─ controller       | 接口处理            | 接收/解析用户输入参数的入口/接口层。                                            |
+| ├─ dao              | 数据访问            | 数据访问对象（抽象层），仅包含最基础的 CRUD 方法。                                |
+| ├─ model            | 结构模型            | 数据结构管理模块，管理数据实体对象及输入/输出数据结构。                            |
+| │  ├─ do            | 领域对象            | 用于 dao 数据操作中的业务模型与实例模型转换（由工具维护，用户不可修改）。            |
+| │  └─ entity        | 数据模型            | 数据模型与数据集合的一对一关系（由工具维护，用户不可修改）。                        |
+| └─ service          | 业务实现            | 业务逻辑的具体实现和封装（项目中最复杂的部分）。                                   |
+| **manifest**        | 交付清单            | 程序编译、部署、运行、配置的相关文件。                                           |
+| ├─ config           | 配置管理            | 配置文件存放目录。                                                            |
+| ├─ docker           | 镜像文件            | Docker 镜像相关依赖文件及脚本。                                                |
+| ├─ deploy           | 部署文件            | 部署相关文件（默认提供 Kubernetes 的 Yaml 模板，通过 kustomize 管理）。          |
+| └─ protobuf         | 协议文件            | GRPC 使用的 protobuf 协议定义文件（编译后生成 go 文件到 api 目录）。              |
+| **resource**        | 静态资源            | 静态资源文件（可通过资源打包/镜像编译注入到发布文件中）。                           |
+| **go.mod**          | 依赖管理            | Go Module 包管理的依赖描述文件。                                               |
+| **main.go**         | 入口文件            | 程序入口文件。                                                                |
