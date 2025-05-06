@@ -1,4 +1,6 @@
-
+# run
+- `gf run main.go`
+- `go run main.go`
 
 # 文档
 [GoFrame github](https://github.com/gogf/gf)
