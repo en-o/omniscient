@@ -5,6 +5,6 @@ import (
 )
 
 type JpidReq struct {
-	g.Meta `path:"/jpid" tags:"Java" method:"get" summary:"java 项目"`
+	g.Meta `path:"/jpid" tags:"Java" method:"get" summary:"java 项目列表"`
 }
 type JpidRes struct{}
