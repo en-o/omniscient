@@ -17,5 +17,6 @@ type Jpid struct {
 	Pid         interface{} // pid
 	Catalog     interface{} // 运行目录
 	Run         interface{} // 运行脚本（sh命令
+	Status      interface{} // 状态[1:启动，0:停止]
 	Description interface{} // 项目描述
 }

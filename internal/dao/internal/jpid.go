@@ -27,6 +27,7 @@ type JpidColumns struct {
 	Pid         string // pid
 	Catalog     string // 运行目录
 	Run         string // 运行脚本（sh命令
+	Status      string // 状态[1:启动，0:停止]
 	Description string // 项目描述
 }
 
@@ -38,6 +39,7 @@ var jpidColumns = JpidColumns{
 	Pid:         "pid",
 	Catalog:     "catalog",
 	Run:         "run",
+	Status:      "status",
 	Description: "description",
 }
 
