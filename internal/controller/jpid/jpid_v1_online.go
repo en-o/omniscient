@@ -69,6 +69,7 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 
 			// 合并两种方式获取的端口号
 			allPorts := mergePorts(ports, cmdLinePorts)
+			portsString := strings.Join(allPorts, ",")
 
 			// 获取jar文件所在目录
 			jarDir := getJarDirectory(pid, command)
@@ -77,7 +78,7 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 				Name:    name,
 				Pid:     pid,
 				Run:     command,
-				Ports:   allPorts,
+				Ports:   portsString,
 				Catalog: jarDir,
 			}
 
