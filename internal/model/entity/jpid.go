@@ -8,7 +8,7 @@ package entity
 type Jpid struct {
 	Id          int    `json:"id"          orm:"id"          description:""`              //
 	Name        string `json:"name"        orm:"name"        description:"java项目名"`       // java项目名
-	Port        int    `json:"port"        orm:"port"        description:"运行端口"`          // 运行端口
+	Port        string `json:"port"        orm:"port"        description:"运行端口"`          // 运行端口,多个逗号隔开
 	Pid         int    `json:"pid"         orm:"pid"         description:"pid"`           // pid
 	Catalog     string `json:"catalog"     orm:"catalog"     description:"运行目录"`          // 运行目录
 	Run         string `json:"run"         orm:"run"         description:"运行脚本（sh命令"`     // 运行脚本（sh命令
