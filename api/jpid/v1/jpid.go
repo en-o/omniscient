@@ -22,4 +22,6 @@ type OnlineRes struct {
 type AutoRegisterReq struct {
 	g.Meta `path:"/auto/register" tags:"Java" method:"get" summary:"自动注册在线的java项目列表"`
 }
-type AutoRegisterRes struct{}
+type AutoRegisterRes struct {
+	Message string `json:"message" dc:"注册成功"`
+}

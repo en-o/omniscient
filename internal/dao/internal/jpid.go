@@ -23,10 +23,11 @@ type JpidDao struct {
 type JpidColumns struct {
 	Id          string //
 	Name        string // java项目名
-	Port        string // 运行端口
+	Ports       string // 运行端口
 	Pid         string // pid
 	Catalog     string // 运行目录
-	Run         string // 运行脚本（sh命令
+	Run         string // sh脚本启动命令
+	Script      string // sh脚本启动命令
 	Status      string // 状态[1:启动，0:停止]
 	Description string // 项目描述
 }
@@ -35,10 +36,11 @@ type JpidColumns struct {
 var jpidColumns = JpidColumns{
 	Id:          "id",
 	Name:        "name",
-	Port:        "port",
+	Ports:       "ports",
 	Pid:         "pid",
 	Catalog:     "catalog",
 	Run:         "run",
+	Script:      "script",
 	Status:      "status",
 	Description: "description",
 }
