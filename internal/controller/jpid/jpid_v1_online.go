@@ -2,8 +2,10 @@ package jpid
 
 import (
 	"context"
+	"fmt"
 	"omniscient/internal/model/entity"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -53,10 +55,25 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 			// 尝试从命令中提取项目名称
 			name := extractJavaProjectName(command)
 
+			// 跳过无法识别项目名称的进程
+			if name == "unknown" {
+				continue
+			}
+
+			// 获取进程占用的端口
+			ports := getProcessPorts(pid)
+
+			// 从命令行参数中提取可能的端口号
+			cmdLinePorts := extractPortFromCommand(command)
+
+			// 合并两种方式获取的端口号
+			allPorts := mergePorts(ports, cmdLinePorts)
+
 			linuxPid := &entity.LinuxPid{
-				Name: name,
-				Pid:  pid,
-				Run:  command,
+				Name:  name,
+				Pid:   pid,
+				Run:   command,
+				Ports: allPorts,
 			}
 
 			res.List = append(res.List, linuxPid)
@@ -64,6 +81,100 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 	}
 
 	return res, nil
+}
+
+// 获取进程占用的端口
+func getProcessPorts(pid int) []string {
+	// 首先尝试使用ss命令
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("ss -tulpn | grep %d", pid))
+	output, err := cmd.Output()
+
+	// 如果ss命令失败，尝试使用netstat
+	if err != nil {
+		cmd = exec.Command("bash", "-c", fmt.Sprintf("netstat -tulpn | grep %d", pid))
+		output, err = cmd.Output()
+		if err != nil {
+			return nil
+		}
+	}
+
+	var ports []string
+	portMap := make(map[string]bool) // 用于去重
+
+	// 处理命令输出
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		// 使用正则表达式提取端口号
+		re := regexp.MustCompile(`:(\d+)`)
+		matches := re.FindAllStringSubmatch(line, -1)
+		for _, match := range matches {
+			if len(match) > 1 {
+				port := match[1]
+				if !portMap[port] {
+					ports = append(ports, port)
+					portMap[port] = true
+				}
+			}
+		}
+	}
+
+	return ports
+}
+
+// 从命令行中提取端口号
+func extractPortFromCommand(command string) []string {
+	var ports []string
+	portMap := make(map[string]bool) // 用于去重
+
+	// 常见的端口参数模式
+	portPatterns := []string{
+		`--server\.port=(\d+)`,
+		`-Dserver\.port=(\d+)`,
+		`port\s*=\s*(\d+)`,
+		`-Dport=(\d+)`,
+		`PORT=(\d+)`,
+	}
+
+	for _, pattern := range portPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(command)
+		if len(matches) > 1 {
+			port := matches[1]
+			if !portMap[port] {
+				ports = append(ports, port)
+				portMap[port] = true
+			}
+		}
+	}
+
+	return ports
+}
+
+// 合并端口列表并去重
+func mergePorts(ports1, ports2 []string) []string {
+	portMap := make(map[string]bool)
+	var result []string
+
+	// 添加所有端口到map中以去重
+	for _, port := range ports1 {
+		if !portMap[port] {
+			portMap[port] = true
+			result = append(result, port)
+		}
+	}
+
+	for _, port := range ports2 {
+		if !portMap[port] {
+			portMap[port] = true
+			result = append(result, port)
+		}
+	}
+
+	return result
 }
 
 // extractJavaProjectName 从Java命令中提取项目名称
@@ -79,17 +190,7 @@ func extractJavaProjectName(command string) string {
 				if strings.HasSuffix(part, ".jar") {
 					// 从完整路径中提取文件名
 					fileName := part[strings.LastIndex(part, "/")+1:]
-					// 移除.jar扩展名和版本号
-					baseName := strings.TrimSuffix(fileName, ".jar")
-					// 移除版本号部分（如 -1.0-SNAPSHOT）
-					if idx := strings.LastIndex(baseName, "-"); idx != -1 {
-						// 检查是否是版本号
-						versionPart := baseName[idx:]
-						if strings.Contains(versionPart, ".") || strings.Contains(versionPart, "SNAPSHOT") {
-							baseName = baseName[:idx]
-						}
-					}
-					return baseName
+					return fileName // 直接返回带.jar后缀的文件名
 				}
 			}
 		}

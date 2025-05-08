@@ -18,7 +18,8 @@ type Jpid struct {
 
 // ps -ef | grep java
 type LinuxPid struct {
-	Name string `json:"name"        orm:"name"        description:"java项目名"`   // java项目名
-	Pid  int    `json:"pid"         orm:"pid"         description:"pid"`       // pid
-	Run  string `json:"run"         orm:"run"         description:"运行脚本（sh命令"` // 运行脚本（sh命令
+	Name  string   `json:"name"        orm:"name"        description:"java项目名"`   // java项目名
+	Pid   int      `json:"pid"         orm:"pid"         description:"pid"`       // pid
+	Run   string   `json:"run"         orm:"run"         description:"运行脚本（sh命令"` // 运行脚本（sh命令
+	Ports []string `json:"ports"    orm:"ports"       description:"占用的端口"`        // 占用的端口
 }
