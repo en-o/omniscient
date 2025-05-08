@@ -1,4 +1,4 @@
-INSERT INTO `jpid` (`name`, `port`, `pid`, `catalog`, `run`, `status`, `description`) VALUES
+INSERT INTO `jpid` (`name`, `ports`, `pid`, `catalog`, `run`, `status`, `description`) VALUES
                                                                                           ('UserManage', "8080", 123, '/usr/local/java/usermanage', 'sh /usr/local/java/usermanage/start.sh', 1, '用户管理系统'),
                                                                                           ('OrderSys', "8081", 124, '/opt/java/ordersys', 'sh /opt/java/ordersys/run.sh', 0, '订单处理系统'),
                                                                                           ('ProductSys', "8082", 125, '/home/java/productsys', 'sh /home/java/productsys/init.sh', 1, '商品信息管理系统'),
