@@ -17,5 +17,5 @@ gfcli:
     system:   "linux"
     packSrc:  "resource,manifest"
     version:  "v1.0.0"
-    output:   "./bin"
+    output:   "./bin/omniscient"
 
