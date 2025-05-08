@@ -60,8 +60,8 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 				continue
 			}
 
-			// 获取进程占用的端口
-			ports := getProcessPorts(pid)
+			// 获取进程占用的TCP端口
+			ports := getTCPPorts(pid)
 
 			// 从命令行参数中提取可能的端口号
 			cmdLinePorts := extractPortFromCommand(command)
@@ -83,15 +83,15 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 	return res, nil
 }
 
-// 获取进程占用的端口
-func getProcessPorts(pid int) []string {
-	// 首先尝试使用ss命令
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("ss -tulpn | grep %d", pid))
+// 获取进程占用的TCP端口
+func getTCPPorts(pid int) []string {
+	// 首先尝试使用ss命令，只获取TCP端口
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("ss -tnlp | grep %d", pid))
 	output, err := cmd.Output()
 
 	// 如果ss命令失败，尝试使用netstat
 	if err != nil {
-		cmd = exec.Command("bash", "-c", fmt.Sprintf("netstat -tulpn | grep %d", pid))
+		cmd = exec.Command("bash", "-c", fmt.Sprintf("netstat -tnlp | grep %d", pid))
 		output, err = cmd.Output()
 		if err != nil {
 			return nil
@@ -108,16 +108,15 @@ func getProcessPorts(pid int) []string {
 			continue
 		}
 
-		// 使用正则表达式提取端口号
-		re := regexp.MustCompile(`:(\d+)`)
-		matches := re.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 {
-				port := match[1]
-				if !portMap[port] {
-					ports = append(ports, port)
-					portMap[port] = true
-				}
+		// 使用正则表达式匹配本地地址的端口号
+		// 匹配格式如 ":8080" 或 "0.0.0.0:8080" 或 "*:8080"
+		re := regexp.MustCompile(`[:\*](\d+)\s+(?:.*?)\s+LISTEN`)
+		matches := re.FindStringSubmatch(line)
+		if len(matches) > 1 {
+			port := matches[1]
+			if !portMap[port] {
+				ports = append(ports, port)
+				portMap[port] = true
 			}
 		}
 	}
