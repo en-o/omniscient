@@ -3,6 +3,7 @@
 - `go run main.go`
 
 # build 
+> https://goframe.org.cn/docs/cli/build
 ```shell
 #!/bin/bash
 

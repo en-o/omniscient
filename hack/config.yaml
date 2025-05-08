@@ -15,9 +15,7 @@ gfcli:
     name:     "omniscient"
     arch:     "all"
     system:   "linux"
-    mod:      "none"
     packSrc:  "resource,manifest"
     version:  "v1.0.0"
     output:   "./bin"
-    extra:    ""
 
