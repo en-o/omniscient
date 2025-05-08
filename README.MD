@@ -2,6 +2,28 @@
 - `gf run main.go`
 - `go run main.go`
 
+# build 
+```shell
+#!/bin/bash
+
+# 定义端口号
+PORT=6001
+
+# 根据端口杀死进程
+PID=$(netstat -nlp | grep :$PORT | awk '{print $7}' | cut -d/ -f1)
+if [ -n "$PID" ]; then
+    echo "Killing process $PID"
+    kill -9 $PID
+fi
+
+# 赋予 ./reURL 文件可执行权限
+chmod +x ./omniscient
+
+# 执行 nohup ./reURl --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 & 进行部署
+nohup ./omniscient --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 &
+
+echo "Deployment completed"
+```
 
 # 文档
 - [GoFrame github](https://github.com/gogf/gf)
