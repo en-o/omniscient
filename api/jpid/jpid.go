@@ -13,4 +13,5 @@ import (
 type IJpidV1 interface {
 	Jpid(ctx context.Context, req *v1.JpidReq) (res *v1.JpidRes, err error)
 	Online(ctx context.Context, req *v1.OnlineReq) (res *v1.OnlineRes, err error)
+	AutoRegister(ctx context.Context, req *v1.AutoRegisterReq) (res *v1.AutoRegisterRes, err error)
 }

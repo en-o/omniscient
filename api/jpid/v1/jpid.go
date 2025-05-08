@@ -18,3 +18,8 @@ type OnlineReq struct {
 type OnlineRes struct {
 	List []*entity.LinuxPid `json:"list" dc:"在线java项目"`
 }
+
+type AutoRegisterReq struct {
+	g.Meta `path:"/auto/register" tags:"Java" method:"get" summary:"自动注册在线的java项目列表"`
+}
+type AutoRegisterRes struct{}
