@@ -12,4 +12,5 @@ import (
 
 type IJpidV1 interface {
 	Jpid(ctx context.Context, req *v1.JpidReq) (res *v1.JpidRes, err error)
+	Online(ctx context.Context, req *v1.OnlineReq) (res *v1.OnlineRes, err error)
 }

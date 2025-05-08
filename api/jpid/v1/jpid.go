@@ -11,3 +11,10 @@ type JpidReq struct {
 type JpidRes struct {
 	List []*entity.Jpid `json:"list" dc:"java 项目列表"`
 }
+
+type OnlineReq struct {
+	g.Meta `path:"/findOnline" tags:"Java" method:"get" summary:"查询在线的java项目列表"`
+}
+type OnlineRes struct {
+	List []*entity.LinuxPid `json:"list" dc:"在线java项目"`
+}
