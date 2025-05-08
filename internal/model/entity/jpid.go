@@ -17,6 +17,8 @@ type Jpid struct {
 }
 
 // ps -ef | grep java
+//
+//	nohup LinuxPid.run  >/dev/null 2>&1
 type LinuxPid struct {
 	Name  string   `json:"name"        orm:"name"        description:"java项目名"`   // java项目名
 	Pid   int      `json:"pid"         orm:"pid"         description:"pid"`       // pid
