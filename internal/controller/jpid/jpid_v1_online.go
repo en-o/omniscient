@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"omniscient/internal/model/entity"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -69,11 +70,15 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 			// 合并两种方式获取的端口号
 			allPorts := mergePorts(ports, cmdLinePorts)
 
+			// 获取jar文件所在目录
+			jarDir := getJarDirectory(pid, command)
+
 			linuxPid := &entity.LinuxPid{
-				Name:  name,
-				Pid:   pid,
-				Run:   command,
-				Ports: allPorts,
+				Name:    name,
+				Pid:     pid,
+				Run:     command,
+				Ports:   allPorts,
+				Catalog: jarDir,
 			}
 
 			res.List = append(res.List, linuxPid)
@@ -195,4 +200,53 @@ func extractJavaProjectName(command string) string {
 		}
 	}
 	return "unknown"
+}
+
+// getJarDirectory 获取jar文件所在目录
+func getJarDirectory(pid int, command string) string {
+	// 从命令行提取jar文件路径
+	jarPath := extractJarPath(command)
+	if jarPath == "" {
+		return ""
+	}
+
+	// 如果是相对路径，尝试获取进程的工作目录
+	if !filepath.IsAbs(jarPath) {
+		// 尝试通过pwdx命令获取进程的工作目录
+		cmd := exec.Command("bash", "-c", fmt.Sprintf("pwdx %d | cut -d: -f2", pid))
+		output, err := cmd.Output()
+		if err == nil {
+			workDir := strings.TrimSpace(string(output))
+			jarPath = filepath.Join(workDir, jarPath)
+		} else {
+			// 如果pwdx失败，尝试通过/proc/pid/cwd获取
+			cmd = exec.Command("bash", "-c", fmt.Sprintf("readlink /proc/%d/cwd", pid))
+			output, err = cmd.Output()
+			if err == nil {
+				workDir := strings.TrimSpace(string(output))
+				jarPath = filepath.Join(workDir, jarPath)
+			}
+		}
+	}
+
+	// 获取jar文件的目录
+	return filepath.Dir(jarPath)
+}
+
+// extractJarPath 从命令行中提取jar文件路径
+func extractJarPath(command string) string {
+	if strings.Contains(command, "-jar") {
+		parts := strings.Split(command, "-jar")
+		if len(parts) > 1 {
+			// 获取-jar之后的部分
+			remaining := parts[1]
+			// 跳过JVM参数
+			for _, part := range strings.Fields(remaining) {
+				if strings.HasSuffix(part, ".jar") {
+					return part
+				}
+			}
+		}
+	}
+	return ""
 }
