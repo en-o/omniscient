@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目管理</title>
+    <script>
+        async function fetchProjects() {
+            const response = await fetch('/jpid');
+            const data = await response.json();
+            const select = document.getElementById('projectSelect');
+            data.list.forEach(project => {
+                const option = document.createElement('option');
+                option.value = JSON.stringify(project);
+                option.textContent = project.name;
+                select.appendChild(option);
+            });
+        }
+
+        function showDetails() {
+            const selected = JSON.parse(document.getElementById('projectSelect').value);
+            document.getElementById('details').textContent = JSON.stringify(selected, null, 2);
+        }
+
+        async function stopProject() {
+            const selected = JSON.parse(document.getElementById('projectSelect').value);
+            await fetch(`/stop/${selected.pid}`, { method: 'POST' });
+            alert('项目已停止');
+        }
+
+        async function startWithRun() {
+            const selected = JSON.parse(document.getElementById('projectSelect').value);
+            await fetch(`/start/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ catalog: selected.catalog, run: selected.run })
+            });
+            alert('项目已启动 (原始命令)');
+        }
+
+        async function startWithScript() {
+            const selected = JSON.parse(document.getElementById('projectSelect').value);
+            await fetch(`/start/script`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ catalog: selected.catalog, script: selected.script })
+            });
+            alert('项目已启动 (脚本命令)');
+        }
+
+        window.onload = fetchProjects;
+    </script>
+</head>
+<body>
+<h1>项目管理</h1>
+<label for="projectSelect">选择项目：</label>
+<select id="projectSelect" onchange="showDetails()">
+    <option value="">请选择项目</option>
+</select>
+<pre id="details"></pre>
+<button onclick="stopProject()">停止项目</button>
+<button onclick="startWithRun()">启动项目 (原始命令)</button>
+<button onclick="startWithScript()">启动项目 (脚本命令)</button>
+</body>
+</html>

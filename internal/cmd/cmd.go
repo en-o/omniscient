@@ -25,6 +25,8 @@ var (
 					jpid.NewV1(),
 				)
 			})
+			// 绑定静态资源
+			s.SetServerRoot("resource/public")
 			s.Run()
 			return nil
 		},
