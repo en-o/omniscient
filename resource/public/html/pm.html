@@ -9,7 +9,7 @@
             const response = await fetch('/jpid');
             const data = await response.json();
             const select = document.getElementById('projectSelect');
-            data.list.forEach(project => {
+            data.data.list.forEach(project => {
                 const option = document.createElement('option');
                 option.value = JSON.stringify(project);
                 option.textContent = project.name;
