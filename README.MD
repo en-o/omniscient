@@ -2,6 +2,10 @@
 - `gf run main.go`
 - `go run main.go`
 
+## API address
+1. [项目管理页面](http://127.0.0.1:8000/html/pm.html)
+1. [接口文档](http://127.0.0.1:8000/swagger/#tag/Java)
+
 # build 
 > https://goframe.org.cn/docs/cli/build
 ```shell
