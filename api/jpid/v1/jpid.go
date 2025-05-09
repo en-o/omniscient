@@ -22,8 +22,12 @@ type OnlineRes struct {
 type AutoRegisterReq struct {
 	g.Meta `path:"/jpid/auto/register" tags:"Java" method:"get" summary:"自动注册在线的java项目列表"`
 }
+
 type AutoRegisterRes struct {
-	Message string `json:"message" dc:"注册成功"`
+	Message string `json:"message" dc:"操作结果"`
+	Total   int    `json:"total"   dc:"处理进程数"`
+	Updated int    `json:"updated" dc:"更新记录数"`
+	Created int    `json:"created" dc:"新增记录数"`
 }
 
 type StopProjectReq struct {
