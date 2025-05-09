@@ -40,6 +40,7 @@ type StartWithRunReq struct {
 }
 type StartWithRunRes struct {
 	Message string `json:"message" dc:"操作结果"`
+	Output  string `json:"output"  dc:"脚本输出"`
 }
 
 type StartWithScriptReq struct {
