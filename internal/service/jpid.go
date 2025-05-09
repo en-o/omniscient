@@ -9,20 +9,20 @@ import (
 	"strings"
 )
 
-type sJpid struct{}
+type SJpid struct{}
 
-func Jpid() *sJpid {
-	return &sJpid{}
+func Jpid() *SJpid {
+	return &SJpid{}
 }
 
 // GetByPid 根据PID获取项目信息
-func (s *sJpid) GetByPid(ctx context.Context, pid int) (jpid *entity.Jpid, err error) {
+func (s *SJpid) GetByPid(ctx context.Context, pid int) (jpid *entity.Jpid, err error) {
 	err = dao.Jpid.Ctx(ctx).Where("pid", pid).Scan(&jpid)
 	return
 }
 
 // Update 更新项目信息
-func (s *sJpid) Update(ctx context.Context, jpid *entity.Jpid) error {
+func (s *SJpid) Update(ctx context.Context, jpid *entity.Jpid) error {
 	_, err := dao.Jpid.Ctx(ctx).
 		Data(g.Map{
 			"status": jpid.Status,
@@ -33,7 +33,7 @@ func (s *sJpid) Update(ctx context.Context, jpid *entity.Jpid) error {
 }
 
 // GetList 获取项目列表
-func (s *sJpid) GetList(ctx context.Context) (list []*entity.Jpid, err error) {
+func (s *SJpid) GetList(ctx context.Context) (list []*entity.Jpid, err error) {
 	err = dao.Jpid.Ctx(ctx).
 		Order("id DESC").
 		Scan(&list)
@@ -41,7 +41,7 @@ func (s *sJpid) GetList(ctx context.Context) (list []*entity.Jpid, err error) {
 }
 
 // UpdateStatus 更新项目状态
-func (s *sJpid) UpdateStatus(ctx context.Context, pid int, status int) error {
+func (s *SJpid) UpdateStatus(ctx context.Context, pid int, status int) error {
 	_, err := dao.Jpid.Ctx(ctx).
 		Data(g.Map{"status": status}).
 		Where("pid", pid).
@@ -50,7 +50,7 @@ func (s *sJpid) UpdateStatus(ctx context.Context, pid int, status int) error {
 }
 
 // AutoRegister 自动注册和更新Java进程
-func (s *sJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) (total, updated, created int, err error) {
+func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) (total, updated, created int, err error) {
 	// 获取已存在的项目信息
 	var existingProjects []*entity.Jpid
 	if err = dao.Jpid.Ctx(ctx).Scan(&existingProjects); err != nil {
@@ -110,7 +110,7 @@ func (s *sJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 }
 
 // updateExistingProject 更新已存在的项目
-func (s *sJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid, process *entity.LinuxPid) error {
+func (s *SJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid, process *entity.LinuxPid) error {
 	_, err := dao.Jpid.Ctx(ctx).Data(g.Map{
 		"pid":     process.Pid,
 		"catalog": process.Catalog,
@@ -121,7 +121,7 @@ func (s *sJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid
 }
 
 // createNewProject 创建新项目
-func (s *sJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) error {
+func (s *SJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) error {
 	_, err := dao.Jpid.Ctx(ctx).Data(do.Jpid{
 		Name:    process.Name,
 		Ports:   process.Ports,
