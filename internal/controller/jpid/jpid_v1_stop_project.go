@@ -2,18 +2,28 @@ package jpid
 
 import (
 	"context"
-	"github.com/gogf/gf/v2/frame/g"
-	"omniscient/api/jpid/v1"
+	"omniscient/internal/service"
 )
 
 func (c *ControllerV1) StopProject(ctx context.Context, req *v1.StopProjectReq) (res *v1.StopProjectRes, err error) {
-	r := g.RequestFromCtx(ctx)
-	pid := r.GetForm("pid").String()
-	//cmd := exec.Command("kill", "-9", pid)
-	//if err := cmd.Run(); err != nil {
-	//	r.Response.WriteJsonExit(map[string]string{"message": "停止失败", "error": err.Error()})
-	//}
-	//r.Response.WriteJsonExit(map[string]string{"message": "停止成功"})
-	r.Response.WriteJson(pid)
-	return
+	jpid, err := service.Jpid().GetByPid(ctx, req.Pid)
+	if err != nil {
+		return nil, err
+	}
+	if jpid == nil {
+		return nil, gerror.New("项目不存在")
+	}
+
+	// 执行停止命令
+	cmd := exec.Command("kill", "-9", strconv.Itoa(jpid.Pid))
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	// 更新状态
+	if err := service.Jpid().UpdateStatus(ctx, req.Pid, 0); err != nil {
+		return nil, err
+	}
+
+	return &v1.StopProjectRes{Message: "停止成功"}, nil
 }

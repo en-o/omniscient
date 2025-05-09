@@ -2,25 +2,32 @@ package jpid
 
 import (
 	"context"
-	"github.com/gogf/gf/v2/frame/g"
+	"fmt"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"omniscient/api/jpid/v1"
-	"omniscient/internal/model/entity"
+	"omniscient/internal/service"
+	"os/exec"
 )
 
 func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq) (res *v1.StartWithRunRes, err error) {
-	r := g.RequestFromCtx(ctx)
-
-	var data entity.Jpid
-	err = r.ParseForm(&data)
+	jpid, err := service.Jpid().GetByPid(ctx, req.Pid)
 	if err != nil {
-		r.Response.WriteJsonExit(map[string]string{"message": "参数错误", "error": err.Error()})
+		return nil, err
+	}
+	if jpid == nil {
+		return nil, gerror.New("项目不存在")
 	}
 
-	//cmd := exec.Command("sh", "-c", "cd "+data.Catalog+" && "+data.Run)
-	//if err := cmd.Run(); err != nil {
-	//	r.Response.WriteJsonExit(map[string]string{"message": "启动失败", "error": err.Error()})
-	//}
-	//r.Response.WriteJsonExit(map[string]string{"message": "启动成功"})
-	r.Response.WriteJson(data)
-	return
+	// 执行启动命令
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && %s", jpid.Catalog, jpid.Run))
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	// 更新状态
+	if err := service.Jpid().UpdateStatus(ctx, req.Pid, 1); err != nil {
+		return nil, err
+	}
+
+	return &v1.StartWithRunRes{Message: "启动成功"}, nil
 }

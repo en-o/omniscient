@@ -28,18 +28,26 @@ type AutoRegisterRes struct {
 
 type StopProjectReq struct {
 	g.Meta `path:"/stop/:pid" tags:"Java" method:"post" summary:"根据pid停止运行"`
+	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
 }
 type StopProjectRes struct {
+	Message string `json:"message" dc:"操作结果"`
 }
 
 type StartWithRunReq struct {
-	g.Meta `path:"/start/run" tags:"Java" method:"post" summary:"原生命令启动"`
+	g.Meta `path:"/start/run/:pid" tags:"Java" method:"post" summary:"原生命令启动"`
+	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
 }
 type StartWithRunRes struct {
+	Message string `json:"message" dc:"操作结果"`
 }
 
 type StartWithScriptReq struct {
-	g.Meta `path:"/start/script" tags:"Java" method:"post" summary:"脚本启动"`
+	g.Meta `path:"/start/script/:pid" tags:"Java" method:"post" summary:"脚本启动"`
+	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
 }
+
 type StartWithScriptRes struct {
+	Message string `json:"message" dc:"操作结果"`
+	Output  string `json:"output"  dc:"脚本输出"`
 }
