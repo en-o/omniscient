@@ -60,3 +60,11 @@ https://goframe.org.cn/docs/design/project-structure
 | **resource**        | 静态资源            | 静态资源文件（可通过资源打包/镜像编译注入到发布文件中）。                           |
 | **go.mod**          | 依赖管理            | Go Module 包管理的依赖描述文件。                                               |
 | **main.go**         | 入口文件            | 程序入口文件。                                                                |
+
+
+# todo
+- [ ] html优化
+  - [ ] 下拉选择变成列表
+  - [ ] 输出脚本日志
+  - [ ] 新增注册在线项目按钮
+- [ ] run优化,更新新的pid
