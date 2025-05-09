@@ -2,13 +2,11 @@ package jpid
 
 import (
 	"context"
+	"fmt"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"omniscient/api/jpid/v1"
-	"omniscient/internal/dao"
-	"omniscient/internal/model/do"
-	"omniscient/internal/model/entity"
+	"omniscient/internal/service"
 	"omniscient/internal/util/javaprocess"
-	"strings"
 )
 
 func (c *ControllerV1) AutoRegister(ctx context.Context, req *v1.AutoRegisterReq) (res *v1.AutoRegisterRes, err error) {

@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
-	"github.com/gogf/gf/v2/os/gtime"
 	"omniscient/internal/dao"
 	"omniscient/internal/model/do"
 	"omniscient/internal/model/entity"
@@ -114,11 +112,10 @@ func (s *sJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 // updateExistingProject 更新已存在的项目
 func (s *sJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid, process *entity.LinuxPid) error {
 	_, err := dao.Jpid.Ctx(ctx).Data(g.Map{
-		"pid":        process.Pid,
-		"catalog":    process.Catalog,
-		"run":        process.Run,
-		"status":     1,
-		"updated_at": gtime.Now(),
+		"pid":     process.Pid,
+		"catalog": process.Catalog,
+		"run":     process.Run,
+		"status":  1,
 	}).Where("id", existing.Id).Update()
 	return err
 }
@@ -126,14 +123,12 @@ func (s *sJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid
 // createNewProject 创建新项目
 func (s *sJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) error {
 	_, err := dao.Jpid.Ctx(ctx).Data(do.Jpid{
-		Name:      process.Name,
-		Ports:     process.Ports,
-		Pid:       process.Pid,
-		Catalog:   process.Catalog,
-		Run:       process.Run,
-		Status:    1,
-		CreatedAt: gtime.Now(),
-		UpdatedAt: gtime.Now(),
+		Name:    process.Name,
+		Ports:   process.Ports,
+		Pid:     process.Pid,
+		Catalog: process.Catalog,
+		Run:     process.Run,
+		Status:  1,
 	}).Insert()
 	return err
 }
