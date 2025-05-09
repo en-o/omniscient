@@ -30,19 +30,16 @@ type StopProjectReq struct {
 	g.Meta `path:"/stop/:pid" tags:"Java" method:"post" summary:"根据pid停止运行"`
 }
 type StopProjectRes struct {
-	Message string `json:"message" dc:"停止成功"`
 }
 
 type StartWithRunReq struct {
 	g.Meta `path:"/start/run" tags:"Java" method:"post" summary:"原生命令启动"`
 }
 type StartWithRunRes struct {
-	Message string `json:"message" dc:"运行成功"`
 }
 
 type StartWithScriptReq struct {
 	g.Meta `path:"/start/script" tags:"Java" method:"post" summary:"脚本启动"`
 }
 type StartWithScriptRes struct {
-	Message string `json:"message" dc:"运行成功"`
 }
