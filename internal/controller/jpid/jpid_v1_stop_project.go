@@ -72,7 +72,7 @@ func (c *ControllerV1) StopProject(ctx context.Context, req *v1.StopProjectReq) 
 	)
 
 	// 更新项目状态
-	if err = service.Jpid().UpdateStatus(ctx, req.Pid, 1); err != nil {
+	if err = service.Jpid().UpdateStatus(ctx, req.Pid, 0); err != nil {
 		return nil, gerror.Wrap(err, "更新状态失败")
 	}
 	return &v1.StopProjectRes{Message: "停止成功"}, nil
