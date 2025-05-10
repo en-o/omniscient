@@ -26,6 +26,7 @@
                 <th>PID</th>
                 <th>目录</th>
                 <th>启动命令</th>
+                <th>脚本命令</th>
                 <th>状态</th>
                 <th>操作</th>
             </tr>
@@ -35,8 +36,37 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<div id="contextMenu" class="context-menu" style="display: none;">
+    <div class="context-menu-item" onclick="handleContextMenu('copy')">复制内容</div>
+</div>
+
+<script src="/resource/js/bootstrap.bundle.min.js"></script>
 <script>
+    let contextMenuTarget = null;
+
+    // 添加右键菜单处理
+    document.addEventListener('contextmenu', function(e) {
+        if (e.target.classList.contains('code-block')) {
+            e.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            contextMenuTarget = e.target;
+            menu.style.display = 'block';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+        }
+    });
+
+    // 点击其他地方关闭右键菜单
+    document.addEventListener('click', function() {
+        document.getElementById('contextMenu').style.display = 'none';
+    });
+
+    function handleContextMenu(action) {
+        if (action === 'copy' && contextMenuTarget) {
+            copyText(contextMenuTarget.textContent);
+        }
+    }
+
     // 添加注册在线项目的处理函数
     function registerOnline() {
         handleRequest('/jpid/auto/register', 'GET')
@@ -44,23 +74,24 @@
                 alert('注册失败：' + error.message);
             });
     }
+
     async function fetchProjects() {
         try {
             const response = await fetch('/jpid');
             const data = await response.json();
             const tbody = document.getElementById('projectList');
-            tbody.innerHTML = ''; // 清空现有内容
+            tbody.innerHTML = '';
 
             if (!data.data.list || data.data.list.length === 0) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                <td colspan="7" class="text-center text-muted py-4">
-                    <div>
-                        <i class="bi bi-inbox fs-4"></i>
-                        <p class="mt-2">暂无项目数据</p>
-                    </div>
-                </td>
-            `;
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <div>
+                            <i class="bi bi-inbox fs-4"></i>
+                            <p class="mt-2">暂无项目数据</p>
+                        </div>
+                    </td>
+                `;
                 tbody.appendChild(tr);
                 return;
             }
@@ -68,35 +99,35 @@
             data.data.list.forEach(project => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                <td>
-                    <div class="truncate" data-bs-toggle="tooltip" title="${project.name}">${project.name}</div>
-                </td>
-                <td>${project.ports}</td>
-                <td>${project.pid}</td>
-                <td>
-                    <div class="truncate" data-bs-toggle="tooltip" title="${project.catalog}">${project.catalog}</div>
-                </td>
-                <td>
-                    <div class="truncate" data-bs-toggle="tooltip" title="${project.run}">
-                        ${project.run}
-                        <button class="btn btn-outline-secondary btn-sm copy-btn ms-1" onclick="copyText('${project.run}')">复制</button>
-                    </div>
-                </td>
-                <td>
-                    <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
-                        ${project.status === 1 ? '运行中' : '已停止'}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-danger action-btn" onclick="stopProject(${project.pid})">停止</button>
-                    <button class="btn btn-primary action-btn" onclick="startWithRun(${project.pid})">原生启动</button>
-                    <button class="btn btn-success action-btn" onclick="startWithScript(${project.pid})">脚本启动</button>
-                </td>
-            `;
+                    <td>
+                        <div class="truncate" data-bs-toggle="tooltip" title="${project.name}">${project.name}</div>
+                    </td>
+                    <td>${project.ports}</td>
+                    <td>${project.pid}</td>
+                    <td>
+                        <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.catalog}">${project.catalog}</div>
+                    </td>
+                    <td>
+                        <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.run}">${project.run}</div>
+                    </td>
+                    <td>
+                        <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.script}">${project.script || '无'}</div>
+                    </td>
+                    <td>
+                        <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
+                            ${project.status === 1 ? '运行中' : '已停止'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger action-btn" onclick="stopProject(${project.pid})">停止</button>
+                        <button class="btn btn-primary action-btn" onclick="startWithRun(${project.pid})">原生启动</button>
+                        <button class="btn btn-success action-btn" onclick="startWithScript(${project.pid})">脚本启动</button>
+                    </td>
+                `;
                 tbody.appendChild(tr);
             });
 
-            // 初始化所有工具提示
+            // 初始化工具提示
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
             tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl)
@@ -127,7 +158,7 @@
             }
 
             alert(result.message);
-            setTimeout(() => location.reload(), 1000);
+            await fetchProjects(); // 直接调用刷新函数而不是重载页面
         } catch (error) {
             alert('操作失败：' + error.message);
         }

@@ -24,3 +24,32 @@
     font-size: 0.8rem;
     margin-right: 0.3rem;
 }
+
+/* 添加到现有的 CSS 中 */
+.code-block {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-family: monospace;
+    font-size: 0.9em;
+    position: relative;
+}
+
+.context-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px 0;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.context-menu-item {
+    padding: 5px 20px;
+    cursor: pointer;
+}
+
+.context-menu-item:hover {
+    background-color: #f0f0f0;
+}
