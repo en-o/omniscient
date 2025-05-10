@@ -89,6 +89,7 @@
                     <p class="mt-2">正在执行，请稍候...</p>
                 </div>
             </div>
+            <!-- footer 将由 JavaScript 动态添加 -->
         </div>
     </div>
 </div>
@@ -316,7 +317,7 @@
             // 清空并初始化输出内容
             const outputContent = document.getElementById('outputContent');
             const outputLoading = document.getElementById('outputLoading');
-            outputContent.textContent = '';
+            outputContent.innerHTML = '';
             outputLoading.style.display = 'block';
 
             // 创建 SSE 连接
@@ -324,27 +325,8 @@
 
             // 处理输出消息
             eventSource.addEventListener('output', (e) => {
-                outputContent.textContent += e.data + '\n';
-                outputContent.scrollTop = outputContent.scrollHeight;
-            });
-
-            // 处理错误消息
-            eventSource.addEventListener('error', (e) => {
-                const data = e.data ? JSON.parse(e.data) : { message: '未知错误' };
-                outputContent.textContent += '错误：' + data.message + '\n';
-                outputContent.scrollTop = outputContent.scrollHeight;
-                eventSource.close();
-                outputLoading.style.display = 'none';
-            });
-
-
-
-            // 在 handleRunRequest 函数中修改输出内容处理
-            eventSource.addEventListener('output', (e) => {
                 const line = e.data;
-                // 检查是否包含 ANSI 转义序列
                 if (line.includes('\x1b[')) {
-                    // 将 ANSI 转义序列转换为 HTML 样式
                     const coloredLine = line
                         .replace(/\x1b\[1;31m/g, '<span style="color: #ff5555; font-weight: bold;">') // 红色
                         .replace(/\x1b\[1;32m/g, '<span style="color: #50fa7b; font-weight: bold;">') // 绿色
@@ -358,22 +340,35 @@
                 outputContent.scrollTop = outputContent.scrollHeight;
             });
 
-            // 修改完成事件处理
+            // 修改错误处理
+            eventSource.onerror = (e) => {
+                eventSource.close();
+                // 如果已经收到了 complete 事件，就不显示错误
+                if (!outputContent.innerHTML.includes('执行完成')) {
+                    const errorMsg = '连接已断开';
+                    outputContent.innerHTML += `<span style="color: #ff5555; font-weight: bold;">错误：${errorMsg}</span>\n`;
+                }
+                outputContent.scrollTop = outputContent.scrollHeight;
+                // 显示关闭按钮
+                addCloseButton(outputModal);
+            };
+
+            // 处理完成消息
             eventSource.addEventListener('complete', (e) => {
+                eventSource.close();
                 outputLoading.style.display = 'none';
-                // 3秒后自动关闭并刷新
-                setTimeout(() => {
-                    outputModal.hide();
-                    fetchProjects();
-                }, 3000);
+                outputContent.scrollTop = outputContent.scrollHeight;
+                // 添加关闭按钮
+                addCloseButton(outputModal);
+                // 刷新项目列表
+                fetchProjects();
             });
 
         } catch (error) {
             outputLoading.style.display = 'none';
-            outputContent.textContent = '错误：' + error.message;
-            setTimeout(() => {
-                bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
-            }, 3000);
+            outputContent.innerHTML += `<span style="color: #ff5555; font-weight: bold;">错误：${error.message}</span>\n`;
+            // 显示关闭按钮
+            addCloseButton(outputModal);
         }
     }
 
@@ -440,6 +435,26 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
+
+    // 添加关闭按钮的辅助函数
+    function addCloseButton(modal) {
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'modal-footer';
+        modalFooter.innerHTML = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+    `;
+
+        const modalContent = document.querySelector('#outputModal .modal-content');
+        // 检查是否已存在 modal-footer
+        const existingFooter = modalContent.querySelector('.modal-footer');
+        if (!existingFooter) {
+            modalContent.appendChild(modalFooter);
+        }
+
+        document.querySelector('#outputLoading').style.display = 'none';
+    }
+
+
     window.onload = fetchProjects;
 </script>
 </body>
