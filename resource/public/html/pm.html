@@ -310,6 +310,9 @@
     }
     async function handleRunRequest(url, method = 'GET') {
         try {
+            // 判断是否是直接运行模式（非后台运行）
+            const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
+
             // 显示输出模态框
             const outputModal = new bootstrap.Modal(document.getElementById('outputModal'), {
                 backdrop: 'static',
@@ -322,6 +325,12 @@
             const outputLoading = document.getElementById('outputLoading');
             outputContent.innerHTML = '';
             outputLoading.style.display = 'block';
+
+            // 如果是直接运行模式，立即添加带有停止功能的关闭按钮
+            if (isDirectRun) {
+                const pid = url.match(/\/run\/(\d+)/)[1];
+                addRunningCloseButton(outputModal, pid);
+            }
 
             // 创建 SSE 连接
             const eventSource = new EventSource(url);
@@ -361,8 +370,10 @@
                 eventSource.close();
                 outputLoading.style.display = 'none';
                 outputContent.scrollTop = outputContent.scrollHeight;
-                // 添加关闭按钮
-                addCloseButton(outputModal);
+                // 只在非直接运行模式下添加普通关闭按钮
+                if (!isDirectRun) {
+                    addCloseButton(outputModal);
+                }
                 // 刷新项目列表
                 fetchProjects();
             });
@@ -370,8 +381,10 @@
         } catch (error) {
             outputLoading.style.display = 'none';
             outputContent.innerHTML += `<span style="color: #ff5555; font-weight: bold;">错误：${error.message}</span>\n`;
-            // 显示关闭按钮
-            addCloseButton(outputModal);
+            // 显示普通关闭按钮（非直接运行模式）
+            if (!isDirectRun) {
+                addCloseButton(outputModal);
+            }
         }
     }
 
@@ -457,6 +470,32 @@
         document.querySelector('#outputLoading').style.display = 'none';
     }
 
+
+
+    // 添加带有停止功能的关闭按钮
+    function addRunningCloseButton(modal, pid) {
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'modal-footer';
+        modalFooter.innerHTML = `
+        <button type="button" class="btn btn-danger" onclick="stopAndClose(${pid})">停止运行并关闭</button>
+    `;
+
+        const modalContent = document.querySelector('#outputModal .modal-content');
+        // 检查是否已存在 modal-footer
+        const existingFooter = modalContent.querySelector('.modal-footer');
+        if (!existingFooter) {
+            modalContent.appendChild(modalFooter);
+        }
+
+        document.querySelector('#outputLoading').style.display = 'none';
+    }
+
+    // 停止运行并关闭窗口
+    async function stopAndClose(pid) {
+        if (confirm('确定要停止运行吗？')) {
+            bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
+        }
+    }
 
     window.onload = fetchProjects;
 </script>
