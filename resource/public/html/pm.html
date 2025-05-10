@@ -337,12 +337,30 @@
                 outputLoading.style.display = 'none';
             });
 
-            // 处理完成消息
-            eventSource.addEventListener('complete', (e) => {
-                outputContent.textContent += e.data + '\n';
-                outputLoading.style.display = 'none';
-                eventSource.close();
 
+
+            // 在 handleRunRequest 函数中修改输出内容处理
+            eventSource.addEventListener('output', (e) => {
+                const line = e.data;
+                // 检查是否包含 ANSI 转义序列
+                if (line.includes('\x1b[')) {
+                    // 将 ANSI 转义序列转换为 HTML 样式
+                    const coloredLine = line
+                        .replace(/\x1b\[1;31m/g, '<span style="color: #ff5555; font-weight: bold;">') // 红色
+                        .replace(/\x1b\[1;32m/g, '<span style="color: #50fa7b; font-weight: bold;">') // 绿色
+                        .replace(/\x1b\[1;33m/g, '<span style="color: #f1fa8c; font-weight: bold;">') // 黄色
+                        .replace(/\x1b\[1;34m/g, '<span style="color: #bd93f9; font-weight: bold;">') // 蓝色
+                        .replace(/\x1b\[0m/g, '</span>');
+                    outputContent.innerHTML += coloredLine + '\n';
+                } else {
+                    outputContent.innerHTML += line + '\n';
+                }
+                outputContent.scrollTop = outputContent.scrollHeight;
+            });
+
+            // 修改完成事件处理
+            eventSource.addEventListener('complete', (e) => {
+                outputLoading.style.display = 'none';
                 // 3秒后自动关闭并刷新
                 setTimeout(() => {
                     outputModal.hide();

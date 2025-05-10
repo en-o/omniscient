@@ -46,6 +46,12 @@ func (c *ControllerV1) StartWithScript(ctx context.Context, req *v1.StartWithScr
 		return nil, gerror.New("脚本命令为空")
 	}
 
+	// 发送启动提示
+	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 正在启动项目: %s\x1b[0m", jpid.Name))
+	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;34m==> 工作目录: %s\x1b[0m", jpid.Catalog))
+	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;34m==> 执行命令: %s\x1b[0m", jpid.Script))
+	sendSSEMessage(w, "output", "\x1b[1;33m==> 开始执行...\x1b[0m\n")
+
 	// 构建命令执行环境
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && %s", jpid.Catalog, jpid.Script))
 
@@ -84,7 +90,6 @@ func (c *ControllerV1) StartWithScript(ctx context.Context, req *v1.StartWithScr
 		for scanner.Scan() {
 			line := scanner.Text()
 			outputBuffer.WriteString(line + "\n")
-			// 发送 SSE 消息
 			sendSSEMessage(w, "output", line)
 		}
 		done <- cmd.Wait()
@@ -94,19 +99,35 @@ func (c *ControllerV1) StartWithScript(ctx context.Context, req *v1.StartWithScr
 	select {
 	case <-time.After(30 * time.Second):
 		if err = cmd.Process.Kill(); err != nil {
-			sendSSEMessage(w, "error", "终止超时进程失败："+err.Error())
+			sendSSEMessage(w, "error", "\x1b[1;31m==> 终止超时进程失败："+err.Error()+"\x1b[0m")
 			return nil, gerror.Wrap(err, "终止超时进程失败")
 		}
-		sendSSEMessage(w, "error", "脚本执行超时")
+		sendSSEMessage(w, "error", "\x1b[1;31m==> 脚本执行超时\x1b[0m")
 		return nil, gerror.New("脚本执行超时")
 	case err = <-done:
 		if err != nil {
-			sendSSEMessage(w, "error", "脚本执行失败："+err.Error())
+			sendSSEMessage(w, "error", "\x1b[1;31m==> 脚本执行失败："+err.Error()+"\x1b[0m")
 			return nil, gerror.Wrapf(err, "脚本执行失败: %s", outputBuffer.String())
 		}
 	}
 
+	// 等待进程启动并获取新的 PID
+	sendSSEMessage(w, "output", "\x1b[1;33m==> 正在获取新进程 PID...\x1b[0m")
+	newPid, err := service.Jpid().FindNewPid(ctx, jpid)
+	if err != nil {
+		sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 无法获取新的 PID\x1b[0m")
+		g.Log().Warning(ctx, "无法获取新的PID", err)
+	} else if newPid != jpid.Pid {
+		if err = service.Jpid().UpdatePid(ctx, jpid.Pid, newPid); err != nil {
+			sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
+			g.Log().Warning(ctx, "更新PID失败", err)
+		} else {
+			sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 已更新 PID: %d -> %d\x1b[0m", jpid.Pid, newPid))
+		}
+	}
+
 	// 发送完成消息
+	sendSSEMessage(w, "output", "\n\x1b[1;32m==> 执行完成!\x1b[0m")
 	sendSSEMessage(w, "complete", "执行完成")
 	return &v1.StartWithScriptRes{
 		Message: "启动成功",
