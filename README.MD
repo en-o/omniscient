@@ -75,7 +75,7 @@ https://goframe.org.cn/docs/design/project-structure
   - [x] 新增注册在线项目按钮
   - [x] 操作完后刷新列表
 - [x] 运行启动后,更新的pid
-- [ ] 运行run失败
+- [x] 运行run失败
 - [ ] 新增结构
   - [ ] 新增表(服务器mac,服务器名(可修改，默认系统名+最后一位IP),服务器ip,备注)
   - [ ] 新增选择栏目，选择服务器
