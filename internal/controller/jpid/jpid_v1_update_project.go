@@ -20,7 +20,7 @@ func (c *ControllerV1) UpdateProject(ctx context.Context, req *v1.UpdateProjectR
 	}
 
 	// 更新项目信息
-	err = service.Jpid().UpdateProject(ctx, req.Pid, req.Run, req.Description)
+	err = service.Jpid().UpdateInfo(ctx, req.Pid, req.Script, req.Description)
 	if err != nil {
 		return nil, gerror.Wrap(err, "更新项目失败")
 	}

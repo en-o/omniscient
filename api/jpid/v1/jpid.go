@@ -60,7 +60,7 @@ type StartWithScriptRes struct {
 type UpdateProjectReq struct {
 	g.Meta      `path:"/jpid/update/:pid" tags:"Java" method:"post" summary:"更新项目信息"`
 	Pid         int    `v:"required|min:1"      json:"pid"         dc:"进程ID"`
-	Run         string `v:"required"            json:"run"         dc:"启动命令"`
+	Script      string `v:"required"            json:"script"         dc:"脚本命令"`
 	Description string `v:"required"            json:"description" dc:"项目描述"`
 }
 

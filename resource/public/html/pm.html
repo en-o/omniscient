@@ -56,8 +56,8 @@
                 <form id="editForm">
                     <input type="hidden" id="editPid">
                     <div class="mb-3">
-                        <label for="editRun" class="form-label">启动命令</label>
-                        <textarea class="form-control" id="editRun" rows="3" required></textarea>
+                        <label for="editScript" class="form-label">脚本命令</label>
+                        <textarea class="form-control" id="editScript" rows="3" required></textarea>
                     </div>
                     <div class="mb-3">
                         <label for="editDescription" class="form-label">项目描述</label>
@@ -175,7 +175,7 @@
                                     </button></li>
                                 `}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><button class="dropdown-item" onclick="showEdit(${project.pid}, '${escapeHtml(project.run)}', '${escapeHtml(project.description)}')">
+                                <li><button class="dropdown-item" onclick="showEdit(${project.pid}, '${escapeHtml(project.script)}', '${escapeHtml(project.description)}')">
                                     <i class="bi bi-pencil text-info"></i> 编辑
                                 </button></li>
                             </ul>
@@ -297,9 +297,9 @@
     }
 
     // 显示编辑模态框
-    function showEdit(pid, run, description) {
+    function showEdit(pid, script, description) {
         document.getElementById('editPid').value = pid;
-        document.getElementById('editRun').value = run;
+        document.getElementById('editScript').value = script;
         document.getElementById('editDescription').value = description;
         new bootstrap.Modal(document.getElementById('editModal')).show();
     }
@@ -308,19 +308,20 @@
     // 保存编辑
     async function saveEdit() {
         const pid = document.getElementById('editPid').value;
-        const run = document.getElementById('editRun').value;
+        const script = document.getElementById('editScript').value;
         const description = document.getElementById('editDescription').value;
 
-        if (!run.trim() || !description.trim()) {
+        if (!script.trim() || !description.trim()) {
             alert('请填写完整信息');
             return;
         }
 
         try {
+            console.log("Saving edit for PID:", pid," Script:", script, "Description:", description);
             const response = await fetch(`/jpid/update/${pid}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ run, description })
+                body: JSON.stringify({ script, description })
             });
 
             const result = await response.json();
