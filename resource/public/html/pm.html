@@ -153,12 +153,32 @@
                         </span>
                     </td>
                     <td>
-                        <button class="btn btn-danger action-btn" onclick="stopProject(${project.pid})">停止</button>
-                        <button class="btn btn-primary action-btn" onclick="startWithRun(${project.pid})">原生启动</button>
-                        <button class="btn btn-success action-btn" onclick="startWithScript(${project.pid})">脚本启动</button>
-                        <button class="btn btn-info action-btn" onclick="showEdit(${project.pid}, '${project.run}', '${project.description}')">
-                            <i class="bi bi-pencil"></i> 编辑
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                操作
+                            </button>
+                            <ul class="dropdown-menu">
+                                ${project.status === 0 ? `
+                                    <li><button class="dropdown-item" onclick="startWithRun(${project.pid})">
+                                        <i class="bi bi-play-fill text-primary"></i> 原生启动
+                                    </button></li>
+                                    <li><button class="dropdown-item" onclick="startWithScript(${project.pid})">
+                                        <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
+                                    </button></li>
+                                ` : `
+                                    <li><button class="dropdown-item" onclick="stopProject(${project.pid})">
+                                        <i class="bi bi-stop-fill text-danger"></i> 停止
+                                    </button></li>
+                                `}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item" onclick="showEdit(${project.pid}, '${escapeHtml(project.run)}', '${escapeHtml(project.description)}')">
+                                    <i class="bi bi-pencil text-info"></i> 编辑
+                                </button></li>
+                            </ul>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -315,6 +335,15 @@
         }
     }
 
+    // 添加 HTML 转义函数防止 XSS
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
     window.onload = fetchProjects;
 </script>
 </body>
