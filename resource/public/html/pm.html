@@ -73,6 +73,27 @@
     </div>
 </div>
 
+<!-- 添加输出显示模态框 -->
+<div class="modal fade" id="outputModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">运行输出</h5>
+            </div>
+            <div class="modal-body">
+                <pre id="outputContent" class="output-content"></pre>
+                <div class="text-center" id="outputLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">运行中...</span>
+                    </div>
+                    <p class="mt-2">正在执行，请稍候...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script src="/resource/js/bootstrap.bundle.min.js"></script>
 <script>
     let contextMenuTarget = null;
@@ -284,16 +305,64 @@
         }
     }
 
+    async function handleRunRequest(url, method = 'POST') {
+        try {
+            // 显示输出模态框
+            const outputModal = new bootstrap.Modal(document.getElementById('outputModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            outputModal.show();
+
+            // 清空并初始化输出内容
+            const outputContent = document.getElementById('outputContent');
+            const outputLoading = document.getElementById('outputLoading');
+            outputContent.textContent = '';
+            outputLoading.style.display = 'block';
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || '请求失败');
+            }
+
+            // 隐藏加载指示器
+            outputLoading.style.display = 'none';
+
+            // 显示输出内容
+            outputContent.textContent = result.output || '执行完成，无输出';
+
+            // 3秒后自动关闭模态框
+            setTimeout(() => {
+                outputModal.hide();
+                fetchProjects(); // 刷新项目列表
+            }, 3000);
+
+        } catch (error) {
+            // 发生错误时也要隐藏加载指示器
+            document.getElementById('outputLoading').style.display = 'none';
+            document.getElementById('outputContent').textContent = '错误：' + error.message;
+            // 错误时需要手动关闭
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
+            }, 3000);
+        }
+    }
+
     function stopProject(pid) {
         handleRequest(`/jpid/stop/${pid}`);
     }
 
     function startWithRun(pid) {
-        handleRequest(`/jpid/start/run/${pid}`);
+        handleRunRequest(`/jpid/start/run/${pid}`);
     }
 
     function startWithScript(pid) {
-        handleRequest(`/jpid/start/script/${pid}`);
+        handleRunRequest(`/jpid/start/script/${pid}`);
     }
 
     // 显示编辑模态框

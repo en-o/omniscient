@@ -78,3 +78,23 @@
 .table td:last-child .dropdown-menu {
     transform-origin: top right;
 }
+
+
+/* 输出显示样式 */
+.output-content {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+}
+
+/* 禁用状态下的按钮样式 */
+.modal-backdrop-dark {
+    opacity: 0.7 !important;
+}
