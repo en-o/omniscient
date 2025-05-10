@@ -13,8 +13,8 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Java项目管理</h2>
-        <button class="btn btn-primary" onclick="registerOnline()">
-            <i class="bi bi-plus-circle"></i> 注册在线项目
+        <button type="button" class="btn btn-primary" onclick="registerOnline()" aria-label="注册在线项目">
+            <i class="bi bi-plus-circle" aria-hidden="true"></i> 注册在线项目
         </button>
     </div>
     <div class="table-responsive">
@@ -36,43 +36,44 @@
     </div>
 </div>
 
-<div id="contextMenu" class="context-menu" style="display: none;">
-    <div class="context-menu-item" onclick="handleContextMenu('copy')">复制内容</div>
+<div id="contextMenu" class="context-menu" style="display: none;" role="menu">
+    <button type="button" class="context-menu-item" onclick="handleContextMenu('copy')" role="menuitem" tabindex="0">
+        复制内容
+    </button>
 </div>
 
 <script src="/resource/js/bootstrap.bundle.min.js"></script>
 <script>
     let contextMenuTarget = null;
 
-    // 添加右键菜单处理
-    document.addEventListener('contextmenu', function(e) {
-        if (e.target.classList.contains('code-block')) {
-            e.preventDefault();
-            const menu = document.getElementById('contextMenu');
-            contextMenuTarget = e.target;
-            menu.style.display = 'block';
-            menu.style.left = e.pageX + 'px';
-            menu.style.top = e.pageY + 'px';
-        }
-    });
+    // 注册在线项目处理函数优化
+    async function registerOnline() {
+        try {
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 注册中...';
 
-    // 点击其他地方关闭右键菜单
-    document.addEventListener('click', function() {
-        document.getElementById('contextMenu').style.display = 'none';
-    });
-
-    function handleContextMenu(action) {
-        if (action === 'copy' && contextMenuTarget) {
-            copyText(contextMenuTarget.textContent);
-        }
-    }
-
-    // 添加注册在线项目的处理函数
-    function registerOnline() {
-        handleRequest('/jpid/auto/register', 'GET')
-            .catch(error => {
-                alert('注册失败：' + error.message);
+            const response = await fetch('/jpid/auto/register', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
             });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || '注册失败');
+            }
+
+            // 显示注册结果
+            const message = `注册完成：共处理 ${result.total} 个进程，更新 ${result.updated} 个，新增 ${result.created} 个`;
+            alert(message);
+            await fetchProjects();
+        } catch (error) {
+            alert('注册失败：' + error.message);
+        } finally {
+            const btn = document.querySelector('.btn-primary');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-circle" aria-hidden="true"></i> 注册在线项目';
+        }
     }
 
     async function fetchProjects() {
@@ -137,12 +138,74 @@
         }
     }
 
-    function copyText(text) {
-        navigator.clipboard.writeText(text).then(() => {
+
+
+    // 改进右键菜单处理
+    document.addEventListener('contextmenu', function(e) {
+        if (e.target.classList.contains('code-block')) {
+            e.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            contextMenuTarget = e.target;
+
+            // 设置菜单位置
+            const x = e.pageX;
+            const y = e.pageY;
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // 确保菜单不会超出窗口边界
+            menu.style.left = (x + menuWidth > windowWidth ? x - menuWidth : x) + 'px';
+            menu.style.top = (y + menuHeight > windowHeight ? y - menuHeight : y) + 'px';
+            menu.style.display = 'block';
+
+            // 自动聚焦第一个菜单项
+            const firstItem = menu.querySelector('.context-menu-item');
+            if (firstItem) {
+                firstItem.focus();
+            }
+        }
+    });
+
+    // 处理右键菜单键盘事件
+    document.addEventListener('keydown', function(e) {
+        const menu = document.getElementById('contextMenu');
+        if (menu.style.display === 'block') {
+            if (e.key === 'Escape') {
+                menu.style.display = 'none';
+            } else if (e.key === 'Enter') {
+                handleContextMenu('copy');
+            }
+        }
+    });
+
+
+    function handleContextMenu(action) {
+        if (action === 'copy' && contextMenuTarget) {
+            copyText(contextMenuTarget.textContent);
+        }
+    }
+
+    // 优化复制功能
+    async function copyText(text) {
+        try {
+            await navigator.clipboard.writeText(text.trim());
             alert('复制成功！');
-        }).catch(err => {
-            alert('复制失败：' + err);
-        });
+        } catch (err) {
+            // 降级处理方案
+            const textArea = document.createElement('textarea');
+            textArea.value = text.trim();
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('复制成功！');
+            } catch (err) {
+                alert('复制失败：请手动复制');
+            }
+            document.body.removeChild(textArea);
+        }
     }
 
     async function handleRequest(url, method = 'POST') {
