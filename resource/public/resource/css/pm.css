@@ -1,0 +1,26 @@
+.container {
+    margin-top: 2rem;
+}
+
+.truncate {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.badge {
+    cursor: pointer;
+}
+
+.copy-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.action-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    margin-right: 0.3rem;
+}

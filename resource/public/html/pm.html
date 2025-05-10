@@ -4,74 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>项目管理</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="/resource/image/favicon.ico" type="image/x-icon">
+    <link href="/resource/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/resource/css/bootstrap-icons.css" rel="stylesheet">
+    <link href="/resource/css/pm.css" rel="stylesheet">
     <style>
-        .container { max-width: 800px; margin-top: 2rem; }
-        .project-details { margin: 1rem 0; padding: 1rem; border-radius: 4px; background: #f8f9fa; }
-        .btn-group { margin-top: 1rem; }
-        .status-badge { margin-left: 1rem; }
+        .container { margin-top: 2rem; }
+        .truncate {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+        .badge { cursor: pointer; }
+        .copy-btn {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .action-btn {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin-right: 0.3rem;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h2 class="mb-4">Java项目管理</h2>
-
-    <div class="form-group">
-        <label for="projectSelect" class="form-label">选择项目：</label>
-        <select class="form-select" id="projectSelect" onchange="showDetails()">
-            <option value="">请选择项目</option>
-        </select>
-    </div>
-
-    <div class="project-details" id="details-container" style="display:none">
-        <h5>项目详情：<span class="status-badge" id="status-badge"></span></h5>
-        <pre class="bg-light p-3 rounded" id="details"></pre>
-
-        <div class="btn-group">
-            <button class="btn btn-danger me-2" onclick="stopProject()">停止项目</button>
-            <button class="btn btn-primary me-2" onclick="startWithRun()">原生命令启动</button>
-            <button class="btn btn-success" onclick="startWithScript()">脚本启动</button>
-        </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>端口</th>
+                <th>PID</th>
+                <th>目录</th>
+                <th>启动命令</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="projectList"></tbody>
+        </table>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     async function fetchProjects() {
         try {
             const response = await fetch('/jpid');
             const data = await response.json();
-            const select = document.getElementById('projectSelect');
+            const tbody = document.getElementById('projectList');
+            tbody.innerHTML = ''; // 清空现有内容
+
+            if (!data.data.list || data.data.list.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td colspan="7" class="text-center text-muted py-4">
+                    <div>
+                        <i class="bi bi-inbox fs-4"></i>
+                        <p class="mt-2">暂无项目数据</p>
+                    </div>
+                </td>
+            `;
+                tbody.appendChild(tr);
+                return;
+            }
+
             data.data.list.forEach(project => {
-                const option = document.createElement('option');
-                option.value = JSON.stringify(project);
-                option.textContent = project.name;
-                select.appendChild(option);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>
+                    <div class="truncate" data-bs-toggle="tooltip" title="${project.name}">${project.name}</div>
+                </td>
+                <td>${project.ports}</td>
+                <td>${project.pid}</td>
+                <td>
+                    <div class="truncate" data-bs-toggle="tooltip" title="${project.catalog}">${project.catalog}</div>
+                </td>
+                <td>
+                    <div class="truncate" data-bs-toggle="tooltip" title="${project.run}">
+                        ${project.run}
+                        <button class="btn btn-outline-secondary btn-sm copy-btn ms-1" onclick="copyText('${project.run}')">复制</button>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
+                        ${project.status === 1 ? '运行中' : '已停止'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-danger action-btn" onclick="stopProject(${project.pid})">停止</button>
+                    <button class="btn btn-primary action-btn" onclick="startWithRun(${project.pid})">原生启动</button>
+                    <button class="btn btn-success action-btn" onclick="startWithScript(${project.pid})">脚本启动</button>
+                </td>
+            `;
+                tbody.appendChild(tr);
+            });
+
+            // 初始化所有工具提示
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
             });
         } catch (error) {
             alert('获取项目列表失败：' + error);
         }
     }
 
-    function showDetails() {
-        const container = document.getElementById('details-container');
-        const selected = JSON.parse(document.getElementById('projectSelect').value || 'null');
-
-        if (!selected) {
-            container.style.display = 'none';
-            return;
-        }
-
-        container.style.display = 'block';
-        document.getElementById('details').textContent = JSON.stringify(selected, null, 2);
-
-        const badge = document.getElementById('status-badge');
-        badge.className = `badge ${selected.status === 1 ? 'bg-success' : 'bg-danger'}`;
-        badge.textContent = selected.status === 1 ? '运行中' : '已停止';
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('复制成功！');
+        }).catch(err => {
+            alert('复制失败：' + err);
+        });
     }
 
     async function handleRequest(url, method = 'POST') {
         try {
-            const selected = JSON.parse(document.getElementById('projectSelect').value);
             const response = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' }
@@ -82,58 +134,26 @@
                 throw new Error(result.error || '请求失败');
             }
 
-            // 显示成功消息和输出
-            const toast = new bootstrap.Toast(document.getElementById('successToast'));
-            document.getElementById('toastMessage').textContent = result.message;
-            if (result.output) {
-                document.getElementById('outputArea').textContent = result.output;
-                document.getElementById('outputContainer').style.display = 'block';
-            }
-            toast.show();
-
-            // 3秒后刷新页面
-            setTimeout(() => location.reload(), 3000);
+            alert(result.message);
+            setTimeout(() => location.reload(), 1000);
         } catch (error) {
-            const toast = new bootstrap.Toast(document.getElementById('errorToast'));
-            document.getElementById('errorMessage').textContent = error.message;
-            toast.show();
+            alert('操作失败：' + error.message);
         }
     }
 
-    // 修改调用函数
-    function stopProject() {
-        const selected = JSON.parse(document.getElementById('projectSelect').value);
-        handleRequest(`/jpid/stop/${selected.pid}`);
+    function stopProject(pid) {
+        handleRequest(`/jpid/stop/${pid}`);
     }
 
-    function startWithRun() {
-        const selected = JSON.parse(document.getElementById('projectSelect').value);
-        handleRequest(`/jpid/start/run/${selected.pid}`);
+    function startWithRun(pid) {
+        handleRequest(`/jpid/start/run/${pid}`);
     }
 
-    function startWithScript() {
-        const selected = JSON.parse(document.getElementById('projectSelect').value);
-        handleRequest(`/jpid/start/script/${selected.pid}`);
+    function startWithScript(pid) {
+        handleRequest(`/jpid/start/script/${pid}`);
     }
+
     window.onload = fetchProjects;
 </script>
 </body>
-<!-- 添加到body底部 -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <!-- 成功提示 -->
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" id="toastMessage"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-
-    <!-- 错误提示 -->
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" id="errorMessage"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-</div>
 </html>

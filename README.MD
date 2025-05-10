@@ -64,7 +64,7 @@ https://goframe.org.cn/docs/design/project-structure
 
 # todo
 - [ ] html优化
-  - [ ] 下拉选择变成列表
+  - [x] 下拉选择变成列表
   - [ ] 输出脚本日志
   - [ ] 新增注册在线项目按钮
   - [ ] 操作完后刷新列表
