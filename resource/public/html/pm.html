@@ -27,6 +27,7 @@
                 <th>目录</th>
                 <th>启动命令</th>
                 <th>脚本命令</th>
+                <th>项目描述</th>
                 <th>状态</th>
                 <th>操作</th>
             </tr>
@@ -100,7 +101,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>
-                        <div class="truncate" data-bs-toggle="tooltip" title="${project.name}">${project.name}</div>
+                        <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.name}">${project.name}</div>
                     </td>
                     <td>${project.ports}</td>
                     <td>${project.pid}</td>
@@ -113,6 +114,7 @@
                     <td>
                         <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.script}">${project.script || '无'}</div>
                     </td>
+                    <td>${project.description || '无'}</td>
                     <td>
                         <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
                             ${project.status === 1 ? '运行中' : '已停止'}
