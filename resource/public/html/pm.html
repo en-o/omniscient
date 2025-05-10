@@ -73,12 +73,14 @@
     </div>
 </div>
 
-<!-- 添加输出显示模态框 -->
+<!-- 输出显示模态框 -->
+<!-- 输出显示模态框 -->
 <div class="modal fade" id="outputModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">运行输出</h5>
+<!--                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>-->
             </div>
             <div class="modal-body">
                 <pre id="outputContent" class="output-content"></pre>
@@ -89,7 +91,6 @@
                     <p class="mt-2">正在执行，请稍候...</p>
                 </div>
             </div>
-            <!-- footer 将由 JavaScript 动态添加 -->
         </div>
     </div>
 </div>
@@ -308,7 +309,7 @@
             alert('操作失败：' + error.message);
         }
     }
-    async function handleRunRequest(url, method = 'GET') {
+    async function handleRunRequest(url, method = 'GET', title = "运行输出") {
         try {
             // 判断是否是直接运行模式（非后台运行）
             const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
@@ -318,6 +319,8 @@
                 backdrop: 'static',
                 keyboard: false
             });
+            // 设置模态框标题
+            document.querySelector('#outputModal .modal-title').textContent = title;
             outputModal.show();
 
             // 清空并初始化输出内容
@@ -393,11 +396,12 @@
     }
 
     function startWithRun(pid, background = false) {
-        handleRunRequest(`/jpid/start/run/${pid}?background=${background}`, 'GET');
+        const title = background ? "原生启动(后台运行)" : "原生启动";
+        handleRunRequest(`/jpid/start/run/${pid}?background=${background}`, 'GET', title);
     }
 
     function startWithScript(pid) {
-        handleRunRequest(`/jpid/start/script/${pid}`, 'GET');
+        handleRunRequest(`/jpid/start/script/${pid}`, 'GET', "脚本启动");
     }
 
 
