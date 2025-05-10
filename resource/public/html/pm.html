@@ -153,14 +153,15 @@
                         </span>
                     </td>
                     <td>
-                        <div class="btn-group">
+                        <div class="btn-group" style="position: relative;">
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                                     type="button"
                                     data-bs-toggle="dropdown"
+                                    data-bs-auto-close="outside"
                                     aria-expanded="false">
                                 操作
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu dropdown-menu-end">  <!-- 添加 dropdown-menu-end 类 -->
                                 ${project.status === 0 ? `
                                     <li><button class="dropdown-item" onclick="startWithRun(${project.pid})">
                                         <i class="bi bi-play-fill text-primary"></i> 原生启动

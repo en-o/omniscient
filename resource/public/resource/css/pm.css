@@ -53,3 +53,28 @@
 .context-menu-item:hover {
     background-color: #f0f0f0;
 }
+
+
+/* 操作按钮样式优化 */
+.btn-group {
+    position: relative;
+}
+
+.dropdown-menu {
+    min-width: 120px;
+    z-index: 1021;  /* 确保下拉菜单在最上层 */
+}
+
+.dropdown-menu-end {
+    right: 0;
+    left: auto !important;  /* 防止 Bootstrap 的自动定位覆盖 */
+}
+
+.table-responsive {
+    overflow-x: visible !important;  /* 允许下拉菜单溢出容器 */
+}
+
+/* 确保最后一列的下拉菜单不会被截断 */
+.table td:last-child .dropdown-menu {
+    transform-origin: top right;
+}
