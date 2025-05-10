@@ -185,8 +185,11 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">  <!-- 添加 dropdown-menu-end 类 -->
                                 ${project.status === 0 ? `
-                                    <li><button class="dropdown-item" onclick="startWithRun(${project.pid})">
+                                    <li><button class="dropdown-item" onclick="startWithRun(${project.pid}, false)">
                                         <i class="bi bi-play-fill text-primary"></i> 原生启动
+                                    </button></li>
+                                    <li><button class="dropdown-item" onclick="startWithRun(${project.pid}, true)">
+                                        <i class="bi bi-play-fill text-success"></i> 原生启动(后台)
                                     </button></li>
                                     <li><button class="dropdown-item" onclick="startWithScript(${project.pid})">
                                         <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
@@ -376,8 +379,8 @@
         handleRequest(`/jpid/stop/${pid}`);
     }
 
-    function startWithRun(pid) {
-        handleRunRequest(`/jpid/start/run/${pid}`, 'GET');
+    function startWithRun(pid, background = false) {
+        handleRunRequest(`/jpid/start/run/${pid}?background=${background}`, 'GET');
     }
 
     function startWithScript(pid) {

@@ -50,8 +50,9 @@ type StartWithScriptRes struct {
 }
 
 type StartWithRunReq struct {
-	g.Meta `path:"/jpid/start/run/:pid" method:"get" tags:"Jpid" summary:"原生命令启动"`
-	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
+	g.Meta     `path:"/jpid/start/run/:pid" method:"get" tags:"Jpid" summary:"原生命令启动"`
+	Pid        int  `v:"required|min:1" json:"pid" dc:"进程ID"`
+	Background bool `json:"background" dc:"是否后台运行"`
 }
 
 type StartWithRunRes struct {
