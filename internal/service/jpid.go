@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 	"omniscient/internal/dao"
 	"omniscient/internal/model/do"
 	"omniscient/internal/model/entity"
+	"omniscient/internal/util/javaprocess"
 	"strings"
+	"time"
 )
 
 type SJpid struct{}
@@ -143,4 +146,66 @@ func (s *SJpid) UpdateInfo(ctx context.Context, pid int, script, description str
 		Where("pid", pid).
 		Update()
 	return err
+}
+
+// UpdatePid 更新项目的 PID
+func (s *SJpid) UpdatePid(ctx context.Context, oldPid int, newPid int) error {
+	_, err := dao.Jpid.Ctx(ctx).
+		Data(g.Map{
+			"pid":    newPid,
+			"status": 1,
+		}).
+		Where("pid", oldPid).
+		Update()
+	return err
+}
+
+// FindNewPid 查找新的 PID
+func (s *SJpid) FindNewPid(ctx context.Context, project *entity.Jpid) (int, error) {
+	// 等待一些时间让进程完全启动
+	time.Sleep(2 * time.Second)
+
+	// 获取当前运行的 Java 进程
+	processes, err := javaprocess.GetJavaProcesses()
+	if err != nil {
+		return 0, err
+	}
+
+	// 通过项目名称和端口匹配新进程
+	for _, process := range processes {
+		// 检查进程名称
+		if process.Name == project.Name {
+			// 检查端口匹配
+			projectPorts := strings.Split(project.Ports, ",")
+			processPorts := strings.Split(process.Ports, ",")
+
+			if portListsMatch(projectPorts, processPorts) {
+				return process.Pid, nil
+			}
+		}
+	}
+
+	return 0, gerror.New("未找到匹配的新进程")
+}
+
+// portListsMatch 检查端口列表是否匹配
+func portListsMatch(ports1, ports2 []string) bool {
+	if len(ports1) == 0 || len(ports2) == 0 {
+		return false
+	}
+
+	portMap := make(map[string]bool)
+	for _, port := range ports1 {
+		if port != "" {
+			portMap[port] = true
+		}
+	}
+
+	for _, port := range ports2 {
+		if port != "" && portMap[port] {
+			return true
+		}
+	}
+
+	return false
 }

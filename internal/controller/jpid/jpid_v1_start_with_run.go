@@ -74,9 +74,15 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 		"output", stdout.String(),
 	)
 
-	// 更新项目状态
-	if err = service.Jpid().UpdateStatus(ctx, req.Pid, 1); err != nil {
-		return nil, gerror.Wrap(err, "更新状态失败")
+	// 等待进程启动并获取新的 PID
+	newPid, err := service.Jpid().FindNewPid(ctx, jpid)
+	if err != nil {
+		g.Log().Warning(ctx, "无法获取新的PID", err)
+	} else if newPid != jpid.Pid {
+		// 更新新的 PID
+		if err = service.Jpid().UpdatePid(ctx, jpid.Pid, newPid); err != nil {
+			g.Log().Warning(ctx, "更新PID失败", err)
+		}
 	}
 
 	return &v1.StartWithRunRes{
