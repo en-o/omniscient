@@ -38,23 +38,26 @@ type StopProjectRes struct {
 	Message string `json:"message" dc:"操作结果"`
 }
 
-type StartWithRunReq struct {
-	g.Meta `path:"/jpid/start/run/:pid" tags:"Java" method:"post" summary:"原生命令启动"`
-	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
-}
-type StartWithRunRes struct {
-	Message string `json:"message" dc:"操作结果"`
-	Output  string `json:"output"  dc:"脚本输出"`
-}
-
 type StartWithScriptReq struct {
-	g.Meta `path:"/jpid/start/script/:pid" tags:"Java" method:"post" summary:"脚本启动"`
+	g.Meta `path:"/jpid/start/script/:pid" method:"get" tags:"Jpid" summary:"脚本启动"`
 	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
 }
 
 type StartWithScriptRes struct {
-	Message string `json:"message" dc:"操作结果"`
-	Output  string `json:"output"  dc:"脚本输出"`
+	g.Meta  `mime:"text/event-stream"`
+	Message string `json:"message" dc:"返回信息"`
+	Output  string `json:"output" dc:"执行输出"`
+}
+
+type StartWithRunReq struct {
+	g.Meta `path:"/jpid/start/run/:pid" method:"get" tags:"Jpid" summary:"原生命令启动"`
+	Pid    int `v:"required|min:1" json:"pid" dc:"进程ID"`
+}
+
+type StartWithRunRes struct {
+	g.Meta  `mime:"text/event-stream"`
+	Message string `json:"message" dc:"返回信息"`
+	Output  string `json:"output" dc:"执行输出"`
 }
 
 type UpdateProjectReq struct {

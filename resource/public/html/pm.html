@@ -304,8 +304,7 @@
             alert('操作失败：' + error.message);
         }
     }
-
-    async function handleRunRequest(url, method = 'POST') {
+    async function handleRunRequest(url, method = 'GET') {
         try {
             // 显示输出模态框
             const outputModal = new bootstrap.Modal(document.getElementById('outputModal'), {
@@ -320,33 +319,40 @@
             outputContent.textContent = '';
             outputLoading.style.display = 'block';
 
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' }
+            // 创建 SSE 连接
+            const eventSource = new EventSource(url);
+
+            // 处理输出消息
+            eventSource.addEventListener('output', (e) => {
+                outputContent.textContent += e.data + '\n';
+                outputContent.scrollTop = outputContent.scrollHeight;
             });
 
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || '请求失败');
-            }
+            // 处理错误消息
+            eventSource.addEventListener('error', (e) => {
+                const data = e.data ? JSON.parse(e.data) : { message: '未知错误' };
+                outputContent.textContent += '错误：' + data.message + '\n';
+                outputContent.scrollTop = outputContent.scrollHeight;
+                eventSource.close();
+                outputLoading.style.display = 'none';
+            });
 
-            // 隐藏加载指示器
-            outputLoading.style.display = 'none';
+            // 处理完成消息
+            eventSource.addEventListener('complete', (e) => {
+                outputContent.textContent += e.data + '\n';
+                outputLoading.style.display = 'none';
+                eventSource.close();
 
-            // 显示输出内容
-            outputContent.textContent = result.output || '执行完成，无输出';
-
-            // 3秒后自动关闭模态框
-            setTimeout(() => {
-                outputModal.hide();
-                fetchProjects(); // 刷新项目列表
-            }, 3000);
+                // 3秒后自动关闭并刷新
+                setTimeout(() => {
+                    outputModal.hide();
+                    fetchProjects();
+                }, 3000);
+            });
 
         } catch (error) {
-            // 发生错误时也要隐藏加载指示器
-            document.getElementById('outputLoading').style.display = 'none';
-            document.getElementById('outputContent').textContent = '错误：' + error.message;
-            // 错误时需要手动关闭
+            outputLoading.style.display = 'none';
+            outputContent.textContent = '错误：' + error.message;
             setTimeout(() => {
                 bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
             }, 3000);
@@ -358,12 +364,13 @@
     }
 
     function startWithRun(pid) {
-        handleRunRequest(`/jpid/start/run/${pid}`);
+        handleRunRequest(`/jpid/start/run/${pid}`, 'GET');
     }
 
     function startWithScript(pid) {
-        handleRunRequest(`/jpid/start/script/${pid}`);
+        handleRunRequest(`/jpid/start/script/${pid}`, 'GET');
     }
+
 
     // 显示编辑模态框
     function showEdit(pid, script, description) {
