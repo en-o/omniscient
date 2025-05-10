@@ -66,7 +66,7 @@ https://goframe.org.cn/docs/design/project-structure
 - [ ] html优化
   - [x] 下拉选择变成列表
   - [ ] 输出脚本日志
-  - [ ] 新增注册在线项目按钮
+  - [x] 新增注册在线项目按钮
   - [ ] 操作完后刷新列表
 - [ ] 运行启动后,更新的pid
 - [ ] 运行run失败
