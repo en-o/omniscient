@@ -114,7 +114,9 @@
                     <td>
                         <div class="code-block truncate" data-bs-toggle="tooltip" title="${project.script}">${project.script || '无'}</div>
                     </td>
-                    <td>${project.description || '无'}</td>
+                    <td>
+                        <div class="truncate" data-bs-toggle="tooltip" title="${project.description}">${project.description || '无'}</div>
+                    </td>
                     <td>
                         <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
                             ${project.status === 1 ? '运行中' : '已停止'}
