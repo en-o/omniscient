@@ -80,3 +80,4 @@ https://goframe.org.cn/docs/design/project-structure
   - [ ] 新增表(服务器mac,服务器名(可修改，默认系统名+最后一位IP),服务器ip,备注)
   - [ ] 新增选择栏目，选择服务器
   - [ ] 通过选择的服务器加载项目列表
+- [ ] 打包脱机运行
