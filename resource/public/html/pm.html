@@ -64,8 +64,7 @@
             }
 
             // 显示注册结果
-            const message = `注册完成：共处理 ${result.total} 个进程，更新 ${result.updated} 个，新增 ${result.created} 个`;
-            alert(message);
+            alert(result.data.message);
             await fetchProjects();
         } catch (error) {
             alert('注册失败：' + error.message);
