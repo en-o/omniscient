@@ -43,6 +43,36 @@
     </button>
 </div>
 
+
+<!-- 添加编辑模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑项目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editPid">
+                    <div class="mb-3">
+                        <label for="editRun" class="form-label">启动命令</label>
+                        <textarea class="form-control" id="editRun" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">项目描述</label>
+                        <textarea class="form-control" id="editDescription" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="/resource/js/bootstrap.bundle.min.js"></script>
 <script>
     let contextMenuTarget = null;
@@ -126,6 +156,9 @@
                         <button class="btn btn-danger action-btn" onclick="stopProject(${project.pid})">停止</button>
                         <button class="btn btn-primary action-btn" onclick="startWithRun(${project.pid})">原生启动</button>
                         <button class="btn btn-success action-btn" onclick="startWithScript(${project.pid})">脚本启动</button>
+                        <button class="btn btn-info action-btn" onclick="showEdit(${project.pid}, '${project.run}', '${project.description}')">
+                            <i class="bi bi-pencil"></i> 编辑
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -240,6 +273,46 @@
 
     function startWithScript(pid) {
         handleRequest(`/jpid/start/script/${pid}`);
+    }
+
+    // 显示编辑模态框
+    function showEdit(pid, run, description) {
+        document.getElementById('editPid').value = pid;
+        document.getElementById('editRun').value = run;
+        document.getElementById('editDescription').value = description;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+
+    // 保存编辑
+    async function saveEdit() {
+        const pid = document.getElementById('editPid').value;
+        const run = document.getElementById('editRun').value;
+        const description = document.getElementById('editDescription').value;
+
+        if (!run.trim() || !description.trim()) {
+            alert('请填写完整信息');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/jpid/update/${pid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ run, description })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || '更新失败');
+            }
+
+            alert(result.message);
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            await fetchProjects();
+        } catch (error) {
+            alert('更新失败：' + error.message);
+        }
     }
 
     window.onload = fetchProjects;

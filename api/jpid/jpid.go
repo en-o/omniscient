@@ -17,4 +17,5 @@ type IJpidV1 interface {
 	StopProject(ctx context.Context, req *v1.StopProjectReq) (res *v1.StopProjectRes, err error)
 	StartWithRun(ctx context.Context, req *v1.StartWithRunReq) (res *v1.StartWithRunRes, err error)
 	StartWithScript(ctx context.Context, req *v1.StartWithScriptReq) (res *v1.StartWithScriptRes, err error)
+	UpdateProject(ctx context.Context, req *v1.UpdateProjectReq) (res *v1.UpdateProjectRes, err error)
 }

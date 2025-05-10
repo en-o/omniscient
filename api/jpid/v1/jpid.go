@@ -56,3 +56,14 @@ type StartWithScriptRes struct {
 	Message string `json:"message" dc:"操作结果"`
 	Output  string `json:"output"  dc:"脚本输出"`
 }
+
+type UpdateProjectReq struct {
+	g.Meta      `path:"/jpid/update/:pid" tags:"Java" method:"post" summary:"更新项目信息"`
+	Pid         int    `v:"required|min:1"      json:"pid"         dc:"进程ID"`
+	Run         string `v:"required"            json:"run"         dc:"启动命令"`
+	Description string `v:"required"            json:"description" dc:"项目描述"`
+}
+
+type UpdateProjectRes struct {
+	Message string `json:"message" dc:"操作结果"`
+}

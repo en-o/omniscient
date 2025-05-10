@@ -34,6 +34,12 @@ echo "Deployment completed"
 - [GoFrame github](https://github.com/gogf/gf)
 - [GoFrame 中文doc](https://goframe.org.cn/quick/install)
 - [代码生成](https://goframe.org.cn/quick/scaffold-api-gen-dao#%E6%89%A7%E8%A1%8C%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90)
+```shell
+# dao
+gf gen dao
+# 接口
+gf gen ctrl
+```
 
 # 目录
 https://goframe.org.cn/docs/design/project-structure
