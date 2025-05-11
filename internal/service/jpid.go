@@ -9,6 +9,7 @@ import (
 	"omniscient/internal/model/do"
 	"omniscient/internal/model/entity"
 	"omniscient/internal/util/javaprocess"
+	"omniscient/internal/util/system"
 	"os/exec"
 	"strings"
 	"time"
@@ -127,6 +128,7 @@ func (s *SJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid
 
 // createNewProject 创建新项目
 func (s *SJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) error {
+	workerName := system.GetWorkerName()
 	_, err := dao.Jpid.Ctx(ctx).Data(do.Jpid{
 		Name:    process.Name,
 		Ports:   process.Ports,
@@ -134,6 +136,7 @@ func (s *SJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) 
 		Catalog: process.Catalog,
 		Run:     process.Run,
 		Status:  1,
+		Worker:  workerName,
 	}).Insert()
 	return err
 }

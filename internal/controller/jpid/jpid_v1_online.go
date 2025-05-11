@@ -5,6 +5,7 @@ import (
 	"omniscient/api/jpid/v1"
 	"omniscient/internal/model/entity"
 	"omniscient/internal/util/javaprocess"
+	"omniscient/internal/util/system"
 )
 
 func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.OnlineRes, err error) {
@@ -18,7 +19,7 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 	if err != nil {
 		return nil, err
 	}
-
+	workerName := system.GetWorkerName()
 	// 转换进程信息到API响应格式
 	for _, p := range processes {
 		linuxPid := &entity.LinuxPid{
@@ -27,6 +28,7 @@ func (c *ControllerV1) Online(ctx context.Context, req *v1.OnlineReq) (res *v1.O
 			Run:     p.Run,
 			Ports:   p.Ports,
 			Catalog: p.Catalog,
+			Worker:  workerName,
 		}
 		res.List = append(res.List, linuxPid)
 	}

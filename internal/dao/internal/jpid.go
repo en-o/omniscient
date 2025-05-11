@@ -29,6 +29,7 @@ type JpidColumns struct {
 	Run         string // sh脚本启动命令
 	Script      string // sh脚本启动命令
 	Status      string // 状态[1:启动，0:停止]
+	Worker      string // 服务器
 	Description string // 项目描述
 }
 
@@ -42,6 +43,7 @@ var jpidColumns = JpidColumns{
 	Run:         "run",
 	Script:      "script",
 	Status:      "status",
+	Worker:      "worker",
 	Description: "description",
 }
 

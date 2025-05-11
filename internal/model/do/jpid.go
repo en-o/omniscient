@@ -19,5 +19,6 @@ type Jpid struct {
 	Run         interface{} // 原生启动命令
 	Script      interface{} // sh脚本启动命令
 	Status      interface{} // 状态[1:启动，0:停止]
+	Worker      interface{} // 服务器
 	Description interface{} // 项目描述
 }
