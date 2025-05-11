@@ -51,7 +51,37 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 	var cmdStr string
 	if req.Background {
 		// 后台运行模式
+		// 先删除已存在的 nohup.log
+		nohupPath := fmt.Sprintf("%s/nohup.log", jpid.Catalog)
+		if err = os.Remove(nohupPath); err != nil && !os.IsNotExist(err) {
+			sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 警告: 清理旧日志文件失败: %v\x1b[0m", err))
+		}
 		cmdStr = fmt.Sprintf("cd %s && nohup %s > nohup.log 2>&1 &", jpid.Catalog, jpid.Run)
+		// 创建一个 goroutine 用于实时读取日志内容
+		go func() {
+			// 等待文件创建
+			time.Sleep(time.Second)
+
+			// 打开并持续读取日志文件
+			logFile, err := os.Open(nohupPath)
+			if err != nil {
+				sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;31m==> 打开日志文件失败: %v\x1b[0m", err))
+				return
+			}
+			defer func(logFile *os.File) {
+				err := logFile.Close()
+				if err != nil {
+					sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;31m==> 关闭日志文件失败: %v\x1b[0m", err))
+				} else {
+					sendSSEMessage(w, "output", "\x1b[1;32m==> 日志文件已关闭\x1b[0m")
+				}
+			}(logFile)
+
+			scanner := bufio.NewScanner(logFile)
+			for scanner.Scan() {
+				sendSSEMessage(w, "output", scanner.Text())
+			}
+		}()
 	} else {
 		// 直接运行模式
 		cmdStr = fmt.Sprintf("cd %s && %s", jpid.Catalog, jpid.Run)
@@ -112,7 +142,7 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 	if req.Background {
 		// 后台运行模式设置超时
 		select {
-		case <-time.After(30 * time.Second):
+		case <-time.After(60 * time.Second):
 			// 后台运行模式下不处理超时，直接返回成功
 			sendSSEMessage(w, "output", "\x1b[1;32m==> 后台运行模式已启动\x1b[0m")
 			sendSSEMessage(w, "complete", "执行完成")
