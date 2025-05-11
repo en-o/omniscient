@@ -329,11 +329,10 @@
             outputContent.innerHTML = '';
             outputLoading.style.display = 'block';
 
-            // 如果是直接运行模式，立即添加带有停止功能的关闭按钮
-            if (isDirectRun) {
-                const pid = url.match(/\/run\/(\d+)/)[1];
-                addRunningCloseButton(outputModal, pid);
-            }
+
+
+            // 创建一个变量存储新的 PID
+            let newPid = null;
 
             // 创建 SSE 连接
             const eventSource = new EventSource(url);
@@ -349,6 +348,16 @@
                         .replace(/\x1b\[1;34m/g, '<span style="color: #bd93f9; font-weight: bold;">') // 蓝色
                         .replace(/\x1b\[0m/g, '</span>');
                     outputContent.innerHTML += coloredLine + '\n';
+
+                    // 检查并提取新的 PID
+                    const pidMatch = line.match(/进程 PID: (\d+)/);
+                    if (pidMatch) {
+                        newPid = parseInt(pidMatch[1]);
+                        // 如果是直接运行模式，更新关闭按钮的 PID
+                        if (isDirectRun) {
+                            addRunningCloseButton(outputModal, newPid);
+                        }
+                    }
                 } else {
                     outputContent.innerHTML += line + '\n';
                 }
