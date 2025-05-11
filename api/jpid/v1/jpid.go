@@ -72,3 +72,12 @@ type UpdateProjectReq struct {
 type UpdateProjectRes struct {
 	Message string `json:"message" dc:"操作结果"`
 }
+
+type DeleteReq struct {
+	g.Meta `path:"/jpid/delete/:id" tags:"Java" method:"delete" summary:"删除项目"`
+	Id     int `v:"required|min:1" in:"path" json:"id" dc:"项目ID"`
+}
+
+type DeleteRes struct {
+	Message string `json:"message" dc:"操作结果"`
+}

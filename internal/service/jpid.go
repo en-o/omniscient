@@ -250,3 +250,25 @@ func (s *SJpid) IsProcessRunning(pid int) bool {
 	cmd := exec.Command("kill", "-0", fmt.Sprintf("%d", pid))
 	return cmd.Run() == nil
 }
+
+// Delete 删除项目
+func (s *SJpid) Delete(ctx context.Context, id int) error {
+	// 先获取项目信息
+	var jpid *entity.Jpid
+	err := dao.Jpid.Ctx(ctx).Where("id", id).Scan(&jpid)
+	if err != nil {
+		return err
+	}
+	if jpid == nil {
+		return gerror.New("项目不存在")
+	}
+
+	// 检查项目状态，只允许删除已停止的项目
+	if jpid.Status == 1 {
+		return gerror.New("项目正在运行中，请先停止项目后再删除")
+	}
+
+	// 执行删除操作
+	_, err = dao.Jpid.Ctx(ctx).Where("id", id).Delete()
+	return err
+}

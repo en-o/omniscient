@@ -551,6 +551,29 @@
         }
     }
 
+    async function deleteProject(id) {
+        if (!confirm('确定要删除该项目吗？此操作不可恢复。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/jpid/delete/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || '删除失败');
+            }
+
+            alert(result.message);
+            await fetchProjects(); // 刷新项目列表
+        } catch (error) {
+            alert('删除失败：' + error.message);
+        }
+    }
+
     window.onload = fetchProjects;
 </script>
 </body>
