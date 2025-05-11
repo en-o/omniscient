@@ -350,7 +350,7 @@
                     outputContent.innerHTML += coloredLine + '\n';
 
                     // 检查并提取新的 PID
-                    const pidMatch = line.match(/进程 PID: (\d+)/);
+                    const pidMatch = line.match(/==> 进程 PID: (\d+)/);
                     if (pidMatch) {
                         newPid = parseInt(pidMatch[1]);
                         // 如果是直接运行模式，更新关闭按钮的 PID
@@ -363,6 +363,11 @@
                 }
                 outputContent.scrollTop = outputContent.scrollHeight;
             });
+            // 初始添加带有停止功能的关闭按钮（使用原始 PID）
+            // if (isDirectRun) {
+            //     const originalPid = url.match(/\/run\/(\d+)/)[1];
+            //     addRunningCloseButton(outputModal, originalPid);
+            // }
 
             // 修改错误处理
             eventSource.onerror = (e) => {
