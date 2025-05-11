@@ -7,7 +7,18 @@
 1. [接口文档](http://127.0.0.1:8000/swagger/#tag/Java)
 
 # build 
-> https://goframe.org.cn/docs/cli/build
+> 1. https://www.bilibili.com/video/BV1Uu4y1u7kX?spm_id_from=333.788.videopod.episodes&vd_source=6a1f4a95d77312275ea86329958a172f&p=46
+> 2. https://goframe.org.cn/docs/cli/build
+## 打包命令
+打包配置信息在[config.yaml](hack/config.yaml)
+> system = linux,darwin,windows
+> arch = 386,amd64,arm,arm64 
+> https://juejin.cn/post/7097032561092165640
+```shell
+gf build
+```
+## 运行脚本
+1. 随编译文件构建一个配置文件使用`--gf.gcfg.file`即修改内部配置文件，如下：
 ```shell
 #!/bin/bash
 
@@ -29,6 +40,8 @@ nohup ./omniscient --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 &
 
 echo "Deployment completed"
 ```
+
+
 
 # 文档
 - [GoFrame github](https://github.com/gogf/gf)
@@ -80,4 +93,4 @@ https://goframe.org.cn/docs/design/project-structure
 - [x] 原生后台运行需要输出一段时间的日志后结束，并且需要正确更新pid
 - [x] 新增表结构(内存数据库不用处理这个，主要是用mysql的时候区分程序)
   - [x] 加载自己服务器的项目列表
-- [ ] 打包脱机运行
+- [x] 打包脱机运行

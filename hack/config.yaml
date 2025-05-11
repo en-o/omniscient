@@ -13,9 +13,10 @@ gfcli:
       - omniscient/omniscient
   build:
     name:     "omniscient"
-    arch:     "all"
+    arch:     "amd64,arm"
     system:   "linux"
     packSrc:  "resource,manifest"
+    mod: ""
+    cgo: 0
     version:  "v1.0.0"
-    output:   "./bin/omniscient"
 
