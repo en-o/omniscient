@@ -7,6 +7,7 @@ import (
 
 type JpidReq struct {
 	g.Meta `path:"/jpid" tags:"Java" method:"get" summary:"java 项目列表"`
+	Worker string `dc:"worker名称，为空时查询当前worker的项目" v:"" in:"query"`
 }
 type JpidRes struct {
 	List []*entity.Jpid `json:"list" dc:"java 项目列表"`

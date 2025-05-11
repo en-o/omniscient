@@ -39,8 +39,17 @@ func (s *SJpid) Update(ctx context.Context, jpid *entity.Jpid) error {
 }
 
 // GetList 获取项目列表
-func (s *SJpid) GetList(ctx context.Context) (list []*entity.Jpid, err error) {
-	err = dao.Jpid.Ctx(ctx).
+func (s *SJpid) GetList(ctx context.Context, worker string) (list []*entity.Jpid, err error) {
+	// 创建查询对象
+	query := dao.Jpid.Ctx(ctx)
+
+	// 如果worker为空，使用当前服务器的worker
+	if worker == "" {
+		worker = system.GetWorkerName()
+	}
+
+	// 添加worker条件查询
+	err = query.Where("worker", worker).
 		Order("id DESC").
 		Scan(&list)
 	return
