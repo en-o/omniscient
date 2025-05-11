@@ -108,18 +108,11 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 		done <- cmd.Wait()
 	}()
 
-	// 设置超时和等待执行完成
-	select {
-	case <-time.After(30 * time.Second):
-		if !req.Background {
-			// 仅在非后台运行模式下处理超时
-			if err = cmd.Process.Kill(); err != nil {
-				sendSSEMessage(w, "error", "\x1b[1;31m==> 终止超时进程失败："+err.Error()+"\x1b[0m")
-				return nil, gerror.Wrap(err, "终止超时进程失败")
-			}
-			sendSSEMessage(w, "error", "\x1b[1;31m==> 进程执行超时\x1b[0m")
-			return nil, gerror.New("进程执行超时")
-		} else {
+	// 根据运行模式处理执行完成
+	if req.Background {
+		// 后台运行模式设置超时
+		select {
+		case <-time.After(30 * time.Second):
 			// 后台运行模式下不处理超时，直接返回成功
 			sendSSEMessage(w, "output", "\x1b[1;32m==> 后台运行模式已启动\x1b[0m")
 			sendSSEMessage(w, "complete", "执行完成")
@@ -127,9 +120,16 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 				Message: "启动成功",
 				Output:  outputBuffer.String(),
 			}, nil
+		case err = <-done:
+			if err != nil {
+				sendSSEMessage(w, "error", "\x1b[1;31m==> 执行失败："+err.Error()+"\x1b[0m")
+				return nil, gerror.Wrapf(err, "执行失败: %s", outputBuffer.String())
+			}
 		}
-	case err = <-done:
-		if err != nil && !req.Background { // 后台运行模式忽略退出错误
+	} else {
+		// 直接运行模式：等待前端主动关闭，不设置超时
+		err = <-done
+		if err != nil {
 			sendSSEMessage(w, "error", "\x1b[1;31m==> 执行失败："+err.Error()+"\x1b[0m")
 			return nil, gerror.Wrapf(err, "执行失败: %s", outputBuffer.String())
 		}
