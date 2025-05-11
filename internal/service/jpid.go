@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 	"omniscient/internal/dao"
 	"omniscient/internal/model/do"
 	"omniscient/internal/model/entity"
 	"omniscient/internal/util/javaprocess"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -208,4 +210,31 @@ func portListsMatch(ports1, ports2 []string) bool {
 	}
 
 	return false
+}
+
+// 在 internal/service/jpid.go 中添加 Stop 方法的优化
+func (s *SJpid) Stop(ctx context.Context, pid int) error {
+	// 先尝试使用 SIGTERM 信号优雅终止
+	cmd := exec.Command("kill", "-15", fmt.Sprintf("%d", pid))
+	if err := cmd.Run(); err == nil {
+		// 等待一段时间检查进程是否终止
+		time.Sleep(500 * time.Millisecond)
+		if !s.IsProcessRunning(pid) {
+			return nil
+		}
+	}
+
+	// 如果优雅终止失败，使用 SIGKILL 强制终止
+	cmd = exec.Command("kill", "-9", fmt.Sprintf("%d", pid))
+	if err := cmd.Run(); err != nil {
+		return gerror.Wrapf(err, "终止进程失败: %d", pid)
+	}
+
+	return nil
+}
+
+// 添加检查进程是否运行的辅助方法
+func (s *SJpid) IsProcessRunning(pid int) bool {
+	cmd := exec.Command("kill", "-0", fmt.Sprintf("%d", pid))
+	return cmd.Run() == nil
 }

@@ -84,6 +84,17 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 		return nil, gerror.Wrap(err, "启动失败")
 	}
 
+	// 记录进程 PID
+	processPid := cmd.Process.Pid
+	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 进程 PID: %d\x1b[0m", processPid))
+	// 更新项目 PID
+	if err = service.Jpid().UpdatePid(ctx, jpid.Pid, processPid); err != nil {
+		sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
+		g.Log().Warning(ctx, "更新PID失败", err)
+	} else {
+		sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 已更新 PID: %d -> %d\x1b[0m", jpid.Pid, processPid))
+	}
+
 	// 处理输出
 	done := make(chan error, 1)
 	var outputBuffer bytes.Buffer
@@ -97,7 +108,6 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 		done <- cmd.Wait()
 	}()
 
-	// 设置超时和等待执行完成
 	// 设置超时和等待执行完成
 	select {
 	case <-time.After(30 * time.Second):
@@ -122,21 +132,6 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 		if err != nil && !req.Background { // 后台运行模式忽略退出错误
 			sendSSEMessage(w, "error", "\x1b[1;31m==> 执行失败："+err.Error()+"\x1b[0m")
 			return nil, gerror.Wrapf(err, "执行失败: %s", outputBuffer.String())
-		}
-	}
-
-	// 等待进程启动并获取新的 PID
-	sendSSEMessage(w, "output", "\x1b[1;33m==> 正在获取新进程 PID...\x1b[0m")
-	newPid, err := service.Jpid().FindNewPid(ctx, jpid)
-	if err != nil {
-		sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 无法获取新的 PID\x1b[0m")
-		g.Log().Warning(ctx, "无法获取新的PID", err)
-	} else if newPid != jpid.Pid {
-		if err = service.Jpid().UpdatePid(ctx, jpid.Pid, newPid); err != nil {
-			sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
-			g.Log().Warning(ctx, "更新PID失败", err)
-		} else {
-			sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 已更新 PID: %d -> %d\x1b[0m", jpid.Pid, newPid))
 		}
 	}
 

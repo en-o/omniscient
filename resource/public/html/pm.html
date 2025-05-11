@@ -497,7 +497,25 @@
     // 停止运行并关闭窗口
     async function stopAndClose(pid) {
         if (confirm('确定要停止运行吗？')) {
-            bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
+            try {
+                // 先发送停止请求
+                await fetch(`/jpid/stop/${pid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                // 等待一小段时间确保进程被终止
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 然后关闭模态框
+                bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
+
+                // 刷新项目列表
+                await fetchProjects();
+
+            } catch (error) {
+                alert('停止进程失败：' + error.message);
+            }
         }
     }
 
