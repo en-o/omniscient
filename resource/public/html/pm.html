@@ -205,6 +205,10 @@
                                     <li><button class="dropdown-item" onclick="startWithScript(${project.pid})">
                                         <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
                                     </button></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><button class="dropdown-item text-danger" onclick="deleteProject(${project.id})">
+                                        <i class="bi bi-trash"></i> 删除
+                                    </button></li>
                                 ` : `
                                     <li><button class="dropdown-item" onclick="stopProject(${project.pid})">
                                         <i class="bi bi-stop-fill text-danger"></i> 停止
