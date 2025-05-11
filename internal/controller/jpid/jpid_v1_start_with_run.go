@@ -66,29 +66,75 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 			// 忽略错误，只是清理
 		}
 
-		// 构建启动命令，包含获取真实PID的逻辑
+		// 检测是否为Java命令
 		isJavaCmd := strings.Contains(strings.ToLower(jpid.Run), "java ")
 
-		// 构建一个能获取实际PID的命令
-		var cmdStr string
+		// 创建启动脚本文件
+		startScriptPath := fmt.Sprintf("%s/.start_script.sh", jpid.Catalog)
+		var scriptContent string
+
 		if isJavaCmd {
-			// 对于Java命令，我们需要额外的步骤来获取真正的Java进程PID
-			// 先启动程序，然后查找关联的Java进程
-			cmdStr = fmt.Sprintf("cd %s && nohup %s > nohup.log 2>&1 & "+
-				"echo $! > %s && "+
-				"sleep 1 && "+
-				"SHELL_PID=$(cat %s) && "+
-				"JAVA_PID=$(ps -o pid,ppid -ax | grep -v grep | grep $SHELL_PID | grep '[j]ava' | awk '{print $1}') && "+
-				"if [ -n \"$JAVA_PID\" ]; then echo $JAVA_PID > %s; fi",
-				jpid.Catalog, jpid.Run, pidFilePath, pidFilePath, pidFilePath)
+			// Java应用需要特殊处理来获取真正的PID
+			scriptContent = fmt.Sprintf(`#!/bin/bash
+cd "%s"
+nohup %s > nohup.log 2>&1 &
+SHELL_PID=$!
+echo $SHELL_PID > "%s"
+
+# 等待Java进程启动，最多等待10秒
+MAX_ATTEMPTS=20
+ATTEMPT=0
+JAVA_PID=""
+
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+  # 查找所有与命令相关的Java进程
+  POTENTIAL_PIDS=$(ps -eo pid,ppid,command | grep -v grep | grep '[j]ava' | awk '$2 == "'$SHELL_PID'" {print $1}')
+  
+  # 如果找不到作为SHELL_PID子进程的Java进程，则查找所有最近启动的匹配命令特征的Java进程
+  if [ -z "$POTENTIAL_PIDS" ]; then
+    # 提取命令中的关键特征词来匹配进程
+    CMD_FEATURES=$(echo "%s" | tr ' ' '\n' | grep -v '^-' | grep -v '^java$' | head -3 | tr '\n' '|')
+    if [ ! -z "$CMD_FEATURES" ]; then
+      # 使用特征词查找匹配的Java进程，按启动时间排序，取最新的
+      POTENTIAL_PIDS=$(ps -eo pid,etime,command | grep -v grep | grep '[j]ava' | grep -E "$CMD_FEATURES" | sort -k 2 | head -1 | awk '{print $1}')
+    fi
+  fi
+  
+  if [ ! -z "$POTENTIAL_PIDS" ]; then
+    # 如果找到了多个PID，取第一个（通常是主进程）
+    JAVA_PID=$(echo "$POTENTIAL_PIDS" | head -1)
+    echo $JAVA_PID > "%s"
+    break
+  fi
+  
+  ATTEMPT=$((ATTEMPT+1))
+  sleep 0.5
+done
+
+if [ -z "$JAVA_PID" ]; then
+  echo "无法确定Java进程PID" >> nohup.log
+else
+  echo "已获取Java进程PID: $JAVA_PID" >> nohup.log
+fi
+`, jpid.Catalog, jpid.Run, pidFilePath, jpid.Run, pidFilePath)
 		} else {
-			// 非Java命令，直接保存bash创建的子进程PID
-			cmdStr = fmt.Sprintf("cd %s && nohup %s > nohup.log 2>&1 & echo $! > %s",
-				jpid.Catalog, jpid.Run, pidFilePath)
+			// 非Java命令，直接使用bash创建的子进程PID
+			scriptContent = fmt.Sprintf(`#!/bin/bash
+cd "%s"
+nohup %s > nohup.log 2>&1 &
+PID=$!
+echo $PID > "%s"
+`, jpid.Catalog, jpid.Run, pidFilePath)
 		}
 
-		// 执行命令
-		cmd := exec.Command("bash", "-c", cmdStr)
+		// 写入启动脚本
+		if err = os.WriteFile(startScriptPath, []byte(scriptContent), 0755); err != nil {
+			sendSSEMessage(w, "error", "创建启动脚本失败："+err.Error())
+			return nil, gerror.Wrap(err, "创建启动脚本失败")
+		}
+
+		// 执行启动脚本
+		cmd := exec.Command("bash", startScriptPath)
 		cmd.Dir = jpid.Catalog
 		cmd.Env = append(os.Environ(),
 			fmt.Sprintf("PROJECT_NAME=%s", jpid.Name),
@@ -98,11 +144,20 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 
 		if err = cmd.Run(); err != nil {
 			sendSSEMessage(w, "error", "启动失败："+err.Error())
+			// 清理启动脚本
+			_ = os.Remove(startScriptPath)
 			return nil, gerror.Wrap(err, "启动失败")
 		}
 
-		// 等待PID文件写入完成
-		time.Sleep(2 * time.Second)
+		// 清理启动脚本
+		_ = os.Remove(startScriptPath)
+
+		// 等待PID文件写入完成，对于Java程序给予充足时间
+		waitTime := 3 * time.Second
+		if isJavaCmd {
+			waitTime = 10 * time.Second
+		}
+		time.Sleep(waitTime)
 
 		// 读取PID文件获取真实PID
 		pidBytes, err := os.ReadFile(pidFilePath)
@@ -115,9 +170,68 @@ func (c *ControllerV1) StartWithRun(ctx context.Context, req *v1.StartWithRunReq
 				sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 警告: 解析PID失败: %v\x1b[0m", err))
 			} else {
 				processPid = pid
-				sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 获取到进程 PID: %d\x1b[0m", processPid))
+				// 验证PID是否有效
+				process, err := os.FindProcess(processPid)
+				if err != nil || process == nil {
+					sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 警告: 获取到的PID %d 无效\x1b[0m", processPid))
+					processPid = 0
+				} else {
+					// 在Unix系统上，验证进程是否真实存在
+					err = process.Signal(syscall.Signal(0))
+					if err != nil {
+						sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 警告: PID %d 对应的进程不存在\x1b[0m", processPid))
+						processPid = 0
+					} else {
+						// 验证PID是否对应预期的进程类型
+						if isJavaCmd {
+							// 检查PID是否为Java进程
+							cmd := exec.Command("ps", "-p", pidStr, "-o", "command=")
+							output, _ := cmd.Output()
+							if !strings.Contains(strings.ToLower(string(output)), "java") {
+								sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 警告: PID %d 不是Java进程\x1b[0m", processPid))
+								// 不将processPid置零，使用找到的PID，即使不是Java进程
+							}
+						}
+						sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 获取到进程 PID: %d\x1b[0m", processPid))
+					}
+				}
 			}
 		}
+
+		// 如果无法通过PID文件获取有效PID，尝试使用ps命令查找进程
+		if processPid == 0 {
+			sendSSEMessage(w, "output", "\x1b[1;33m==> 尝试通过进程列表查找PID...\x1b[0m")
+
+			// 提取命令的关键部分作为搜索特征
+			cmdParts := strings.Split(jpid.Run, " ")
+			var searchFeature string
+			if len(cmdParts) > 0 {
+				// 使用命令的第一个非空参数作为特征
+				for _, part := range cmdParts {
+					if part != "" && part != "nohup" && part != "&" {
+						searchFeature = part
+						break
+					}
+				}
+			}
+
+			if searchFeature != "" {
+				// 使用ps命令查找最近启动的匹配进程
+				cmd := exec.Command("bash", "-c", fmt.Sprintf("ps -eo pid,etime,command | grep -v grep | grep '%s' | sort -k 2 | head -1 | awk '{print $1}'", searchFeature))
+				output, err := cmd.Output()
+				if err == nil && len(output) > 0 {
+					pidStr := strings.TrimSpace(string(output))
+					pid, err := strconv.Atoi(pidStr)
+					if err == nil && pid > 0 {
+						processPid = pid
+						sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 通过进程搜索找到PID: %d\x1b[0m", processPid))
+					}
+				}
+			}
+		}
+
+		// 清理临时PID文件
+		_ = os.Remove(pidFilePath)
 
 		// 创建一个停止标记通道
 		stopChan := make(chan bool)
