@@ -19,7 +19,11 @@ v2.9.0
 
 # web
 1. [项目管理页面](http://127.0.0.1:8000/html/pm.html)
+> title 规则 ： Hostname+IP地址的最后一段
+![project_ui.png](doc/images/project_ui.png)
+
 2. [接口文档](http://127.0.0.1:8000/swagger/#tag/Java)
+
 
 
 # test
