@@ -9,6 +9,7 @@ import (
 	"omniscient/internal/service"
 )
 
+// 更新基础信息
 func (c *ControllerV1) UpdateProject(ctx context.Context, req *v1.UpdateProjectReq) (res *v1.UpdateProjectRes, err error) {
 	// 验证项目是否存在
 	jpid, err := service.Jpid().GetByPid(ctx, req.Pid)
