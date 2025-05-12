@@ -66,19 +66,24 @@ func (s *SJpid) UpdateStatus(ctx context.Context, pid int, status int) error {
 
 // AutoRegister 自动注册和更新Java进程
 func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) (total, updated, created int, err error) {
-	// 获取已存在的项目信息
+	// 获取当前服务器标识
+	currentWorker := system.GetWorkerName()
+
+	// 只获取当前服务器的已存在项目信息
 	var existingProjects []*entity.Jpid
-	if err = dao.Jpid.Ctx(ctx).Scan(&existingProjects); err != nil {
+	if err = dao.Jpid.Ctx(ctx).Where("worker", currentWorker).Scan(&existingProjects); err != nil {
 		return 0, 0, 0, err
 	}
 
-	// 构建端口到项目的映射
+	// 构建复合键(worker+port)到项目的映射
 	portToProject := make(map[string]*entity.Jpid)
 	for _, project := range existingProjects {
 		if project.Ports != "" {
 			for _, port := range strings.Split(project.Ports, ",") {
 				if port != "" {
-					portToProject[port] = project
+					// 使用worker+port作为key
+					key := fmt.Sprintf("%s:%s", project.Worker, port)
+					portToProject[key] = project
 				}
 			}
 		}
@@ -90,11 +95,13 @@ func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 		var existingProject *entity.Jpid
 		var matchedPort string
 
-		// 检查端口是否已存在
+		// 检查端口是否已存在于当前服务器
 		ports := strings.Split(process.Ports, ",")
 		for _, port := range ports {
 			if port != "" {
-				if proj, exists := portToProject[port]; exists {
+				// 使用当前worker+port构建key
+				key := fmt.Sprintf("%s:%s", currentWorker, port)
+				if proj, exists := portToProject[key]; exists {
 					existingProject = proj
 					matchedPort = port
 					break
@@ -105,16 +112,16 @@ func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 		if existingProject != nil {
 			// 更新已存在记录
 			if err := s.updateExistingProject(ctx, existingProject, process); err != nil {
-				g.Log().Warningf(ctx, "更新项目失败 [Port:%s, PID:%d]: %v",
-					matchedPort, process.Pid, err)
+				g.Log().Warningf(ctx, "更新项目失败 [Worker:%s, Port:%s, PID:%d]: %v",
+					currentWorker, matchedPort, process.Pid, err)
 				continue
 			}
 			updated++
 		} else {
 			// 创建新记录
 			if err := s.createNewProject(ctx, process); err != nil {
-				g.Log().Warningf(ctx, "插入新项目失败 [Ports:%s, PID:%d]: %v",
-					process.Ports, process.Pid, err)
+				g.Log().Warningf(ctx, "插入新项目失败 [Worker:%s, Ports:%s, PID:%d]: %v",
+					currentWorker, process.Ports, process.Pid, err)
 				continue
 			}
 			created++
@@ -131,6 +138,7 @@ func (s *SJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid
 		"catalog": process.Catalog,
 		"run":     process.Run,
 		"status":  1,
+		"worker":  system.GetWorkerName(), // 确保worker字段也更新
 	}).Where("id", existing.Id).Update()
 	return err
 }
