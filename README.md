@@ -54,22 +54,28 @@ gf build
 #!/bin/bash
 
 # 定义端口号
-PORT=6001
+PORT=8001
 
-# 根据端口杀死进程
-PID=$(ss -tlnp | grep ':$PORT' | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2 | sort -u)
+# 根据端口号查找进程并获取 PID
+PID=$(ss -tlnp | grep ":${PORT}" | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2 | sort -u)
+
 if [ -n "$PID" ]; then
     echo "Killing process $PID"
     kill -9 $PID
+else
+    echo "No process found on port $PORT"
 fi
 
-# 赋予 ./reURL 文件可执行权限
+# 赋予 ./omniscient 文件可执行权限
 chmod +x ./omniscient
 
-# 执行 nohup ./reURl --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 & 进行部署
-nohup ./omniscient --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 &
+# 执行 nohup ./omniscient --gf.gcfg.file=./config.prod.yaml > nohup.log 2>&1 & 进行部署
+nohup ./omniscient --gf.gcfg.file=./config.prod.yaml > nohup.log 2>&1 &
 
-echo "Deployment completed ! PID: $PID , PORT: $PORT"
+# 获取新启动的进程 PID
+NEW_PID=$!
+
+echo "Deployment completed! PID: $NEW_PID, PORT: $PORT"
 ```
 
 
