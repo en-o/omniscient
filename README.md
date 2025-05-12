@@ -69,5 +69,5 @@ chmod +x ./omniscient
 # 执行 nohup ./reURl --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 & 进行部署
 nohup ./omniscient --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 &
 
-echo "Deployment completed"
+echo "Deployment completed ! PID: $PID , PORT: $PORT"
 ```
