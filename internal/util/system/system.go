@@ -57,8 +57,8 @@ func getLastIPSegment() string {
 			}
 
 			ipStr := ip.String()
-			g.Log().Info(context.TODO(), "接口名称:", iface.Name)
-			g.Log().Info(context.TODO(), "IP地址:", ipStr)
+			//g.Log().Info(context.TODO(), "接口名称:", iface.Name)
+			//g.Log().Info(context.TODO(), "IP地址:", ipStr)
 
 			// 排除特殊IP范围（如docker网桥等）
 			if !strings.HasPrefix(ipStr, "172.") && !strings.HasPrefix(ipStr, "10.") && !strings.HasPrefix(ipStr, "192.168.") {

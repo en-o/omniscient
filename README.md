@@ -8,6 +8,8 @@ v2.9.0
 ```
 # 已经测过的环境
 - ubuntu 22.04
+- CentOS Linux release 7.9.2009 (Core)
+
 
 # 数据库
 1. run [schema.sql](doc/schema.sql)
