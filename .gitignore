@@ -19,3 +19,4 @@ bin
 #**/config/config.yaml
 /v1.0.0/
 /internal/packed/build_pack_data.go
+/gateway/node_modules/

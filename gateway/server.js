@@ -1,0 +1,288 @@
+const express = require('express');
+const axios = require('axios');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const SSE = require('express-sse'); // For Server-Sent Events proxying
+const path = require('path');
+
+const app = express();
+const port = 3000; // Port for this Node.js backend
+
+// --- In-Memory Server Registry ---
+// Structure: { name: "Unique Server Name", baseUrl: "http://java-server-host:port" }
+let registeredServers = [
+    // Example initial servers (replace or add dynamically)
+    { name: "服务器-测试数据一", baseUrl: "http://192.168.1.70:8080" },
+    { name: "服务器-测试数据二", baseUrl: "http://192.168.1.71:8080" }
+];
+// ---------------------------------
+
+// --- Middleware ---
+app.use(cors()); // Allow requests from frontend (especially if served on different port)
+app.use(bodyParser.json()); // Parse JSON bodies
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files (HTML, CSS, JS)
+// ------------------
+
+// --- Helper Function ---
+function findServerUrl(serverName) {
+    const server = registeredServers.find(s => s.name === serverName);
+    return server ? server.baseUrl : null;
+}
+// ---------------------
+
+// --- API Endpoints ---
+
+// GET /api/servers - List registered servers
+app.get('/api/servers', (req, res) => {
+    res.json(registeredServers.map(s => ({ name: s.name, baseUrl: s.baseUrl }))); // Send only name/baseUrl
+});
+
+// POST /api/servers - Register a new server
+app.post('/api/servers', (req, res) => {
+    const { name, baseUrl } = req.body;
+    if (!name || !baseUrl) {
+        return res.status(400).json({ error: 'Server name and baseUrl are required.' });
+    }
+    if (registeredServers.some(s => s.name === name)) {
+        return res.status(409).json({ error: `Server with name "${name}" already exists.` });
+    }
+    // Basic URL validation (optional but recommended)
+    try {
+        new URL(baseUrl);
+    } catch (e) {
+        return res.status(400).json({ error: 'Invalid baseUrl format.' });
+    }
+
+    const newServer = { name, baseUrl };
+    registeredServers.push(newServer);
+    console.log(`Registered new server: ${name} (${baseUrl})`);
+    res.status(201).json({ message: `Server "${name}" registered successfully.`, server: newServer });
+});
+
+// DELETE /api/servers/:name - Unregister a server
+app.delete('/api/servers/:name', (req, res) => {
+    const serverName = decodeURIComponent(req.params.name); // Handle spaces, etc.
+    const initialLength = registeredServers.length;
+    registeredServers = registeredServers.filter(s => s.name !== serverName);
+
+    if (registeredServers.length < initialLength) {
+        console.log(`Unregistered server: ${serverName}`);
+        res.json({ message: `Server "${serverName}" unregistered.` });
+    } else {
+        res.status(404).json({ error: `Server "${serverName}" not found.` });
+    }
+});
+
+
+// --- Proxy Endpoints for Project Management ---
+
+// GET /api/projects/:serverName - Fetch projects from a specific server
+app.get('/api/projects/:serverName', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const baseUrl = findServerUrl(serverName);
+    if (!baseUrl) {
+        return res.status(404).json({ error: `Server "${serverName}" not found.` });
+    }
+
+    try {
+        const response = await axios.get(`${baseUrl}/jpid`);
+        // Add the server name to the response data so frontend knows origin
+        const responseData = response.data;
+        if (responseData.data && responseData.data.list) {
+            responseData.data.list = responseData.data.list.map(p => ({ ...p, serverName: serverName }));
+            // Set the worker based on the selected server name
+            if (responseData.data.list.length > 0) {
+                responseData.data.list[0].worker = serverName;
+            }
+        } else if (responseData.data) {
+            // Handle case where list might be empty or null but data object exists
+            responseData.data.worker = serverName;
+        }
+        res.json(responseData);
+    } catch (error) {
+        console.error(`Error fetching projects from ${serverName} (${baseUrl}):`, error.message);
+        res.status(error.response?.status || 500).json({
+            error: `Failed to fetch projects from ${serverName}`,
+            details: error.message
+        });
+    }
+});
+
+// GET /api/register/:serverName - Trigger auto-register on a specific server
+app.get('/api/register/:serverName', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const baseUrl = findServerUrl(serverName);
+    if (!baseUrl) return res.status(404).json({ error: `Server "${serverName}" not found.` });
+
+    try {
+        const response = await axios.get(`${baseUrl}/jpid/auto/register`);
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`Error triggering auto-register on ${serverName}:`, error.message);
+        res.status(error.response?.status || 500).json({ error: `Failed on ${serverName}`, details: error.message });
+    }
+});
+
+// POST /api/stop/:serverName/:pid - Stop a project
+app.post('/api/stop/:serverName/:pid', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const pid = req.params.pid;
+    const baseUrl = findServerUrl(serverName);
+    if (!baseUrl) return res.status(404).json({ error: `Server "${serverName}" not found.` });
+
+    try {
+        const response = await axios.post(`${baseUrl}/jpid/stop/${pid}`);
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`Error stopping project ${pid} on ${serverName}:`, error.message);
+        res.status(error.response?.status || 500).json({ error: `Failed on ${serverName}`, details: error.message });
+    }
+});
+
+// POST /api/update/:serverName/:pid - Update a project
+app.post('/api/update/:serverName/:pid', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const pid = req.params.pid;
+    const baseUrl = findServerUrl(serverName);
+    if (!baseUrl) return res.status(404).json({ error: `Server "${serverName}" not found.` });
+
+    try {
+        // Forward the request body
+        const response = await axios.post(`${baseUrl}/jpid/update/${pid}`, req.body, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`Error updating project ${pid} on ${serverName}:`, error.message);
+        res.status(error.response?.status || 500).json({ error: `Failed on ${serverName}`, details: error.message });
+    }
+});
+
+// DELETE /api/delete/:serverName/:id - Delete a project
+app.delete('/api/delete/:serverName/:id', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const id = req.params.id;
+    const baseUrl = findServerUrl(serverName);
+    if (!baseUrl) return res.status(404).json({ error: `Server "${serverName}" not found.` });
+
+    try {
+        const response = await axios.delete(`${baseUrl}/jpid/delete/${id}`);
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`Error deleting project ${id} on ${serverName}:`, error.message);
+        res.status(error.response?.status || 500).json({ error: `Failed on ${serverName}`, details: error.message });
+    }
+});
+
+
+// GET /api/start/:serverName/:type/:pid - Start a project (Handles SSE)
+// :type should be 'run' or 'script'
+const sse = new SSE(); // Initialize SSE middleware globally (or per request if needed)
+
+app.get('/api/start/:serverName/:type/:pid', async (req, res) => {
+    const serverName = decodeURIComponent(req.params.serverName);
+    const type = req.params.type; // 'run' or 'script'
+    const pid = req.params.pid;
+    const background = req.query.background === 'true'; // Get background query param
+    const baseUrl = findServerUrl(serverName);
+
+    if (!baseUrl) {
+        res.status(404).json({ error: `Server "${serverName}" not found.` });
+        return; // Ensure we don't proceed
+    }
+    if (type !== 'run' && type !== 'script') {
+        res.status(400).json({ error: 'Invalid start type. Must be "run" or "script".' });
+        return;
+    }
+
+    // Construct the target URL on the Java server
+    let targetUrl = `${baseUrl}/jpid/start/${type}/${pid}`;
+    if (type === 'run') {
+        targetUrl += `?background=${background}`;
+    }
+
+    console.log(`Proxying SSE request for ${pid} on ${serverName} (${type}, background: ${background}) to ${targetUrl}`);
+
+    // --- Manual SSE Proxying using Axios stream ---
+    try {
+        const response = await axios({
+            method: 'get',
+            url: targetUrl,
+            responseType: 'stream' // Crucial for SSE
+        });
+
+        // Set headers for SSE response *to the browser*
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders(); // Send headers immediately
+
+        let buffer = '';
+
+        response.data.on('data', (chunk) => {
+            buffer += chunk.toString();
+            let boundary;
+            // SSE messages end with \n\n
+            while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+                const message = buffer.substring(0, boundary);
+                buffer = buffer.substring(boundary + 2);
+
+                // Forward the raw SSE message block
+                res.write(`${message}\n\n`);
+            }
+        });
+
+        response.data.on('end', () => {
+            console.log(`SSE stream ended for ${pid} on ${serverName}.`);
+            // Send any remaining buffered data
+            if (buffer.length > 0) {
+                res.write(`${buffer}\n\n`); // Assuming it's a complete message if stream ends
+            }
+            // Optionally send a custom 'complete' event if the target server doesn't reliably
+            // res.write('event: proxy-complete\ndata: Stream ended by target server\n\n');
+            res.end(); // Close connection to browser
+        });
+
+        response.data.on('error', (err) => {
+            console.error(`Error in SSE stream from ${serverName} for ${pid}:`, err);
+            // Send an error event to the browser
+            res.write(`event: error\ndata: ${JSON.stringify({ message: 'Stream error from target server', details: err.message })}\n\n`);
+            res.end(); // Close connection
+        });
+
+        // Handle client closing connection
+        req.on('close', () => {
+            console.log(`Client disconnected from SSE stream for ${pid} on ${serverName}.`);
+            // Abort the request to the target server if possible/needed
+            // For Axios stream, this might involve `response.request.abort()` or similar depending on underlying http agent
+        });
+
+    } catch (error) {
+        console.error(`Failed to establish SSE connection to ${targetUrl}:`, error.response?.status, error.message);
+        // Don't try to write SSE events if connection failed initially
+        if (!res.headersSent) {
+            res.status(error.response?.status || 500).json({
+                error: `Failed to start process on ${serverName}`,
+                details: error.message
+            });
+        } else {
+            // If headers already sent, try sending an SSE error event
+            res.write(`event: error\ndata: ${JSON.stringify({ message: 'Failed to establish connection to target server', details: error.message })}\n\n`);
+            res.end();
+        }
+    }
+});
+
+// --- Catch-all for serving index.html (for SPA-like behavior if needed) ---
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });
+// -------------------------------------------------------------------
+
+
+// --- Start Server ---
+app.listen(port, () => {
+    console.log(`Project Manager Node backend listening at http://localhost:${port}`);
+    console.log("Registered Servers:", registeredServers);
+});
+// --------------------
