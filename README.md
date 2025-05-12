@@ -79,4 +79,6 @@ echo "Deployment completed ! PID: $PID , PORT: $PORT"
 ```shell
 # 使用这个查看抓取的 java进程 是不是就是docker的，
 docker top <容器名称或ID>
+# 查看映射
+docker inspect --format '{{json .Mounts}}' <容器名或ID>
 ```
