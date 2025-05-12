@@ -356,7 +356,7 @@
         try {
             // Point to Node.js backend API, encoding server name for URL safety
             const encodedServerName = encodeURIComponent(currentServerName);
-            const response = await fetch(`/api/projects/${encodedServerName}`);
+            const response = await fetch(`/api/servers/${encodedServerName}`);
             if (!response.ok) {
                 const errorResult = await response.json().catch(() => ({})); // Try to get JSON error
                 throw new Error(errorResult.error || `服务器 ${currentServerName} 响应 ${response.status}`);
@@ -575,170 +575,151 @@
         }
     }
 
-    // Generic request handler (for simple POST/DELETE without output streaming)
+    // 接口请求
     async function handleRequest(url, method = 'POST', body = null) {
-        if (!currentServerName) return alert("No server selected!");
+        if (!currentServerName) return alert("请先选择服务器！");
 
         try {
-            // Construct URL with encoded server name
-            const fullUrl = `/api${url.replace('/jpid/', `/${encodeURIComponent(currentServerName)}/`)}`;
-            console.log(`Handling request: ${method} ${fullUrl}`);
+            // 从已注册服务器中获取 baseUrl
+            const serverResponse = await fetch('/api/servers');
+            const servers = await serverResponse.json();
+            const server = servers.find(s => s.name === currentServerName);
+            if (!server) {
+                throw new Error(`未找到服务器 "${currentServerName}"`);
+            }
+
+            // 直接使用服务器的 baseUrl + 原生接口路径
+            const fullUrl = `${server.baseUrl}${url}`;
+            console.log(`发送请求: ${method} ${fullUrl}`);
 
             const options = {
                 method,
-                headers: {}
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             };
             if (body) {
-                options.headers['Content-Type'] = 'application/json';
                 options.body = JSON.stringify(body);
             }
 
             const response = await fetch(fullUrl, options);
-            const result = await response.json(); // Assume JSON response
+            const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.error || result.message || `Request failed with status ${response.status}`);
+                throw new Error(result.error || result.message || `请求失败: ${response.status}`);
             }
 
-            alert(result.message || '操作成功！'); // Display message from backend/target
-            // Refresh project list only if the action likely changed state (stop, delete)
+            alert(result.message || '操作成功！');
             if (method === 'POST' || method === 'DELETE') {
                 await fetchProjects();
             }
         } catch (error) {
-            console.error(`Operation failed (${method} ${url}):`, error);
+            console.error(`操作失败 (${method} ${url}):`, error);
             alert(`操作失败: ${error.message}`);
         }
     }
-
-    // Request handler for actions that stream output (SSE)
+    // 接口请求 (SSE)
     async function handleRunRequest(url, method = 'GET', title = "运行输出") {
-        if (!currentServerName) return alert("No server selected!");
-
-        // Construct URL for Node.js SSE proxy endpoint
-        const encodedServerName = encodeURIComponent(currentServerName);
-        // Example original url: /jpid/start/run/123?background=true
-        // Needs to become:    /api/start/SERVER_NAME/run/123?background=true
-        const apiUrl = url.replace('/jpid/', `/api/start/${encodedServerName}/`);
-        console.log(`Handling run request: ${method} ${apiUrl}`);
-
-
-        // Show output modal
-        const outputModalElement = document.getElementById('outputModal');
-        const outputModal = bootstrap.Modal.getOrCreateInstance(outputModalElement, {
-            backdrop: 'static', // Keep static backdrop
-            keyboard: false // Keep keyboard false initially
-        });
-
-        // Set title and clear previous state
-        outputModalElement.querySelector('.modal-title').textContent = `${title} (${currentServerName})`;
-        const outputContent = document.getElementById('outputContent');
-        const outputLoading = document.getElementById('outputLoading');
-        const modalContent = outputModalElement.querySelector('.modal-content');
-        const existingFooter = modalContent.querySelector('.modal-footer');
-        if (existingFooter) {
-            existingFooter.remove(); // Remove any previous footer/buttons
-        }
-
-        outputContent.innerHTML = ''; // Clear previous output
-        outputLoading.style.display = 'block'; // Show loading spinner
-        outputModal.show();
-
-
-        // Determine if it's a direct run (not background) to add stop button
-        const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
-        let currentPidForStopButton = null; // Track PID for the stop button if needed
+        if (!currentServerName) return alert("请先选择服务器！");
 
         try {
-            // Connect to the Node.js backend's SSE endpoint
-            const eventSource = new EventSource(apiUrl); // URL already includes server name and params
+            // 获取服务器 baseUrl
+            const serverResponse = await fetch('/api/servers');
+            const servers = await serverResponse.json();
+            const server = servers.find(s => s.name === currentServerName);
+            if (!server) {
+                throw new Error(`未找到服务器 "${currentServerName}"`);
+            }
 
-            // --- Event Listeners for SSE ---
+            // 使用原生 URL
+            const fullUrl = `${server.baseUrl}${url}`;
+            console.log(`处理运行请求: ${method} ${fullUrl}`);
 
+            // 判断是否是直接运行模式（非后台运行）
+            const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
+
+            // 显示输出模态框
+            const outputModal = new bootstrap.Modal(document.getElementById('outputModal'), {
+                backdrop: 'static',
+                keyboard: false
+            });
+            // 设置模态框标题
+            document.querySelector('#outputModal .modal-title').textContent = title;
+            outputModal.show();
+
+            // 清空并初始化输出内容
+            const outputContent = document.getElementById('outputContent');
+            const outputLoading = document.getElementById('outputLoading');
+            outputContent.innerHTML = '';
+            outputLoading.style.display = 'block';
+
+
+
+            // 创建一个变量存储新的 PID
+            let newPid = null;
+
+            // 创建 SSE 连接
+            const eventSource = new EventSource(fullUrl);
+
+            // 处理输出消息
             eventSource.addEventListener('output', (e) => {
-                outputLoading.style.display = 'none'; // Hide loading once output starts
                 const line = e.data;
-                // Basic ANSI color handling (add more codes as needed)
                 if (line.includes('\x1b[')) {
                     const coloredLine = line
-                        .replace(/\x1b\[1;(\d+)m/g, (match, colorCode) => {
-                            // Simple mapping (extend as needed)
-                            const colors = { '31': '#ff5555', '32': '#50fa7b', '33': '#f1fa8c', '34': '#bd93f9', '36':'#8be9fd' };
-                            return `<span style="color: ${colors[colorCode] || 'inherit'}; font-weight: bold;">`;
-                        })
+                        .replace(/\x1b\[1;31m/g, '<span style="color: #ff5555; font-weight: bold;">') // 红色
+                        .replace(/\x1b\[1;32m/g, '<span style="color: #50fa7b; font-weight: bold;">') // 绿色
+                        .replace(/\x1b\[1;33m/g, '<span style="color: #f1fa8c; font-weight: bold;">') // 黄色
+                        .replace(/\x1b\[1;34m/g, '<span style="color: #bd93f9; font-weight: bold;">') // 蓝色
                         .replace(/\x1b\[0m/g, '</span>');
-                    outputContent.insertAdjacentHTML('beforeend', coloredLine + '\n');
-                } else {
-                    outputContent.insertAdjacentHTML('beforeend', escapeHtml(line) + '\n');
-                }
+                    outputContent.innerHTML += coloredLine + '\n';
 
-                // Check for PID message specifically if it's a direct run
-                if (isDirectRun) {
+                    // 检查并提取新的 PID
                     const pidMatch = line.match(/==> 获取到Java进程 PID: (\d+)/);
-                    if (pidMatch && !currentPidForStopButton) { // Only add button once
-                        currentPidForStopButton = parseInt(pidMatch[1]);
-                        console.log(`Detected PID ${currentPidForStopButton} for direct run, adding stop button.`);
-                        addRunningCloseButton(outputModalElement, currentPidForStopButton);
-                    }
-                }
-
-                // Auto-scroll
-                outputContent.scrollTop = outputContent.scrollHeight;
-            });
-
-            eventSource.addEventListener('complete', (e) => {
-                console.log('SSE stream complete event received.');
-                eventSource.close();
-                outputLoading.style.display = 'none';
-                outputContent.insertAdjacentHTML('beforeend', `<span class="text-success fw-bold">--- 执行完成 (${e.data || 'No message'}) ---</span>\n`);
-                outputContent.scrollTop = outputContent.scrollHeight;
-
-                // Add a simple close button if it wasn't a direct run, or if PID wasn't found for direct run
-                if (!isDirectRun || !currentPidForStopButton) {
-                    addCloseButton(outputModalElement);
-                }
-                fetchProjects(); // Refresh list after completion
-            });
-
-            // Handle errors from the SSE stream itself (e.g., connection closed by backend)
-            eventSource.onerror = (e) => {
-                console.error('SSE connection error:', e);
-                eventSource.close();
-                outputLoading.style.display = 'none';
-
-                let errorMsg = '连接已断开或发生错误。';
-                // Attempt to parse error data if backend sends JSON in error event
-                try {
-                    if (e.data) {
-                        const errorData = JSON.parse(e.data);
-                        errorMsg = errorData.message || errorMsg;
-                        if(errorData.details) errorMsg += ` (${errorData.details})`;
-                    }
-                } catch (parseError) { /* Ignore if data is not JSON */ }
-
-
-                outputContent.insertAdjacentHTML('beforeend', `<span class="text-danger fw-bold">错误: ${escapeHtml(errorMsg)}</span>\n`);
-                outputContent.scrollTop = outputContent.scrollHeight;
-
-                // Add appropriate close button based on context
-                if (isDirectRun && currentPidForStopButton) {
-                    // Keep the stop button even on error, maybe process is still running?
-                    // Or switch to simple close? Let's keep Stop for now.
-                    if (!modalContent.querySelector('.modal-footer')) {
-                        addRunningCloseButton(outputModalElement, currentPidForStopButton);
+                    if (pidMatch) {
+                        newPid = parseInt(pidMatch[1]);
+                        // 如果是直接运行模式，更新关闭按钮的 PID
+                        if (isDirectRun) {
+                            addRunningCloseButton(outputModal, newPid);
+                        }
                     }
                 } else {
-                    addCloseButton(outputModalElement); // Add simple close if no stop button exists
+                    outputContent.innerHTML += line + '\n';
                 }
-                fetchProjects(); // Refresh list even on error
+                outputContent.scrollTop = outputContent.scrollHeight;
+            });
+            // 修改错误处理
+            eventSource.onerror = (e) => {
+                eventSource.close();
+                // 如果已经收到了 complete 事件，就不显示错误
+                if (!outputContent.innerHTML.includes('执行完成')) {
+                    const errorMsg = '连接已断开';
+                    outputContent.innerHTML += `<span style="color: #ff5555; font-weight: bold;">错误：${errorMsg}</span>\n`;
+                }
+                outputContent.scrollTop = outputContent.scrollHeight;
+                // 显示关闭按钮
+                addCloseButton(outputModal);
             };
 
+            // 处理完成消息
+            eventSource.addEventListener('complete', (e) => {
+                eventSource.close();
+                outputLoading.style.display = 'none';
+                outputContent.scrollTop = outputContent.scrollHeight;
+                // 只在非直接运行模式下添加普通关闭按钮
+                if (!isDirectRun) {
+                    addCloseButton(outputModal);
+                }
+                // 刷新项目列表
+                fetchProjects();
+            });
+
         } catch (error) {
-            // This catch handles errors *establishing* the EventSource connection
-            console.error(`Failed to establish SSE connection to ${apiUrl}:`, error);
             outputLoading.style.display = 'none';
-            outputContent.insertAdjacentHTML('beforeend', `<span class="text-danger fw-bold">错误：无法连接到服务器进行输出流。 ${error.message}</span>\n`);
-            addCloseButton(outputModalElement); // Add simple close on connection failure
+            outputContent.innerHTML += `<span style="color: #ff5555; font-weight: bold;">错误：${error.message}</span>\n`;
+            // 显示普通关闭按钮（非直接运行模式）
+            if (!isDirectRun) {
+                addCloseButton(outputModal);
+            }
         }
     }
 

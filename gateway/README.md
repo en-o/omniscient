@@ -14,21 +14,7 @@ v20.9.0
 # Start
 node server.js
 ```
-
-
-# import
-```shell
-npm install express axios body-parser cors express-sse
-# axios：从 Node.js 后端向后端发送 HTTP 请求
-# body-parser：用于解析 JSON 请求体
-# cors：用于处理跨域资源共享（在开发过程中很有用）
-# express-sse：用于轻松处理服务器发送事件代理
-```
-
-
-
-# create 
-npm init -y
+http://127.0.0.1:3000/index.html
 
 
 ## 目录结构
