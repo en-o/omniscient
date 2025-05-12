@@ -90,8 +90,6 @@ app.delete('/api/servers/:name', (req, res) => {
 // 获取服务器
 app.get('/api/servers/:name', (req, res) => {
     const serverName = decodeURIComponent(req.params.name);
-    console.log("获取服务器:", serverName);
-
     db.get('SELECT name, baseUrl FROM servers WHERE name = ?', [serverName], (err, row) => {
         if (err) {
             console.error('数据库查询错误:', err);
