@@ -12,8 +12,7 @@ const port = 3000; // Port for this Node.js backend
 // Structure: { name: "Unique Server Name", baseUrl: "http://java-server-host:port" }
 let registeredServers = [
     // Example initial servers (replace or add dynamically)
-    { name: "服务器-测试数据一", baseUrl: "http://192.168.1.70:8080" },
-    { name: "服务器-测试数据二", baseUrl: "http://192.168.1.71:8080" }
+    { name: "wsl", baseUrl: "http://172.20.3.114:8000" },
 ];
 // ---------------------------------
 
@@ -208,66 +207,119 @@ app.get('/api/start/:serverName/:type/:pid', async (req, res) => {
         const response = await axios({
             method: 'get',
             url: targetUrl,
-            responseType: 'stream' // Crucial for SSE
+            responseType: 'stream'
         });
 
-        // Set headers for SSE response *to the browser*
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        res.flushHeaders(); // Send headers immediately
+        res.flushHeaders();
 
         let buffer = '';
 
         response.data.on('data', (chunk) => {
             buffer += chunk.toString();
-            let boundary;
-            // SSE messages end with \n\n
-            while ((boundary = buffer.indexOf('\n\n')) >= 0) {
-                const message = buffer.substring(0, boundary);
-                buffer = buffer.substring(boundary + 2);
 
-                // Forward the raw SSE message block
-                res.write(`${message}\n\n`);
+            // 处理多行消息
+            while (buffer.includes('\n\n')) {
+                const messageEnd = buffer.indexOf('\n\n');
+                const message = buffer.substring(0, messageEnd);
+                buffer = buffer.substring(messageEnd + 2);
+
+                // 解析和格式化消息
+                try {
+                    const lines = message.split('\n');
+                    const eventLine = lines.find(line => line.startsWith('event:'));
+                    const dataLine = lines.find(line => line.startsWith('data:'));
+
+                    if (dataLine) {
+                        let eventType = 'message';
+                        if (eventLine) {
+                            eventType = eventLine.substring(6).trim();
+                        }
+
+                        let data = dataLine.substring(5).trim();
+
+                        // 尝试解析数据为 JSON，如果失败则作为纯文本发送
+                        try {
+                            JSON.parse(data); // 验证是否为有效的 JSON
+                        } catch (e) {
+                            // 如果不是有效的 JSON，将其封装为 JSON 格式
+                            data = JSON.stringify({ text: data });
+                        }
+
+                        const formattedMessage = `event: ${eventType}\ndata: ${data}\n\n`;
+                        res.write(formattedMessage);
+                    }
+                } catch (parseError) {
+                    console.warn('消息解析错误:', parseError);
+                    // 发送格式化的错误消息
+                    const errorMessage = {
+                        error: 'Message parsing error',
+                        details: parseError.message,
+                        originalMessage: message
+                    };
+                    res.write(`event: error\ndata: ${JSON.stringify(errorMessage)}\n\n`);
+                }
             }
         });
 
         response.data.on('end', () => {
-            console.log(`SSE stream ended for ${pid} on ${serverName}.`);
-            // Send any remaining buffered data
+            // 处理剩余的缓冲区数据
             if (buffer.length > 0) {
-                res.write(`${buffer}\n\n`); // Assuming it's a complete message if stream ends
+                try {
+                    const formattedMessage = {
+                        text: buffer.trim()
+                    };
+                    res.write(`event: message\ndata: ${JSON.stringify(formattedMessage)}\n\n`);
+                } catch (e) {
+                    console.warn('处理最终缓冲区数据时出错:', e);
+                }
             }
-            // Optionally send a custom 'complete' event if the target server doesn't reliably
-            // res.write('event: proxy-complete\ndata: Stream ended by target server\n\n');
-            res.end(); // Close connection to browser
+
+            // 发送完成事件
+            const completeMessage = {
+                status: 'complete',
+                message: `Stream completed for PID ${pid}`
+            };
+            res.write(`event: complete\ndata: ${JSON.stringify(completeMessage)}\n\n`);
+            res.end();
         });
 
         response.data.on('error', (err) => {
-            console.error(`Error in SSE stream from ${serverName} for ${pid}:`, err);
-            // Send an error event to the browser
-            res.write(`event: error\ndata: ${JSON.stringify({ message: 'Stream error from target server', details: err.message })}\n\n`);
-            res.end(); // Close connection
+            console.error(`SSE 流错误 (${serverName}, PID ${pid}):`, err);
+            const errorMessage = {
+                error: 'Stream error',
+                details: err.message,
+                pid: pid,
+                server: serverName
+            };
+            res.write(`event: error\ndata: ${JSON.stringify(errorMessage)}\n\n`);
+            res.end();
         });
 
-        // Handle client closing connection
         req.on('close', () => {
-            console.log(`Client disconnected from SSE stream for ${pid} on ${serverName}.`);
-            // Abort the request to the target server if possible/needed
-            // For Axios stream, this might involve `response.request.abort()` or similar depending on underlying http agent
+            console.log(`客户端断开 SSE 连接 (${serverName}, PID ${pid})`);
+            if (response.request) {
+                try {
+                    response.request.abort();
+                } catch (e) {
+                    console.warn('中止请求时出错:', e);
+                }
+            }
         });
 
     } catch (error) {
-        console.error(`Failed to establish SSE connection to ${targetUrl}:`, error.response?.status, error.message);
-        // Don't try to write SSE events if connection failed initially
+        const errorResponse = {
+            error: `与服务器 ${serverName} 建立连接失败`,
+            details: error.message,
+            status: error.response?.status
+        };
+
         if (!res.headersSent) {
-            res.status(error.response?.status || 500).json({
-                error: `Failed to start process on ${serverName}`,
-                details: error.message
-            });
+            res.status(error.response?.status || 500).json(errorResponse);
         } else {
-            // If headers already sent, try sending an SSE error event
-            res.write(`event: error\ndata: ${JSON.stringify({ message: 'Failed to establish connection to target server', details: error.message })}\n\n`);
+            res.write(`event: error\ndata: ${JSON.stringify(errorResponse)}\n\n`);
             res.end();
         }
     }
