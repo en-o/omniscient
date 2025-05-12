@@ -364,13 +364,21 @@
                     outputContent.innerHTML += coloredLine + '\n';
 
                     // 检查并提取新的 PID
-                    const pidMatch = line.match(/==> 进程 PID: (\d+)/);
-                    if (pidMatch) {
+                    const pidMatch = line.match(/==> 获取到Java进程 PID: (\d+)/);
+                    if (pidMatch && isDirectRun) {
                         newPid = parseInt(pidMatch[1]);
-                        // 如果是直接运行模式，更新关闭按钮的 PID
-                        if (isDirectRun) {
-                            addRunningCloseButton(outputModal, newPid);
+                        // 立即添加带有停止功能的关闭按钮
+                        const modalHeader = document.querySelector('#outputModal .modal-header');
+                        const existingButton = modalHeader.querySelector('.btn-close');
+                        if (existingButton) {
+                            existingButton.remove();
                         }
+                        const closeButton = document.createElement('button');
+                        closeButton.type = 'button';
+                        closeButton.className = 'btn btn-danger';
+                        closeButton.innerHTML = '停止并关闭';
+                        closeButton.onclick = () => stopAndClose(newPid);
+                        modalHeader.appendChild(closeButton);
                     }
                 } else {
                     outputContent.innerHTML += line + '\n';
@@ -490,26 +498,6 @@
         modalFooter.className = 'modal-footer';
         modalFooter.innerHTML = `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-    `;
-
-        const modalContent = document.querySelector('#outputModal .modal-content');
-        // 检查是否已存在 modal-footer
-        const existingFooter = modalContent.querySelector('.modal-footer');
-        if (!existingFooter) {
-            modalContent.appendChild(modalFooter);
-        }
-
-        document.querySelector('#outputLoading').style.display = 'none';
-    }
-
-
-
-    // 添加带有停止功能的关闭按钮
-    function addRunningCloseButton(modal, pid) {
-        const modalFooter = document.createElement('div');
-        modalFooter.className = 'modal-footer';
-        modalFooter.innerHTML = `
-        <button type="button" class="btn btn-danger" onclick="stopAndClose(${pid})">关闭</button>
     `;
 
         const modalContent = document.querySelector('#outputModal .modal-content');
