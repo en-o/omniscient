@@ -71,3 +71,12 @@ nohup ./omniscient --gf.gcfg.file=./config.pro.yaml > nohup.log 2>&1 &
 
 echo "Deployment completed ! PID: $PID , PORT: $PORT"
 ```
+
+
+# 问题注意
+## docker 启动的java会造成干扰
+会抓取到docker启动jar程序，但是获取的目录是docker内部的，这里需要注意一下，docker的进程不要手贱去操作了
+```shell
+# 使用这个查看抓取的 java进程 是不是就是docker的，
+docker top <容器名称或ID>
+```
