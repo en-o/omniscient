@@ -323,11 +323,80 @@ echo $PID > "%s"
 			close(stopChan)
 		}()
 	} else {
-		// 直接运行模式，不变
-		cmdStr := fmt.Sprintf("cd %s && %s", jpid.Catalog, jpid.Run)
+		// 直接运行模式
+		// ----- 修改这一部分以解决CentOS下PID获取问题 -----
 
-		// 使用 bash 执行命令以支持更复杂的 shell 特性
-		cmd := exec.Command("bash", "-c", cmdStr)
+		// 生成临时PID文件路径和临时脚本文件路径
+		pidFilePath := fmt.Sprintf("%s/.pid_direct_temp", jpid.Catalog)
+		wrapperScriptPath := fmt.Sprintf("%s/.run_wrapper.sh", jpid.Catalog)
+
+		// 清理可能存在的旧文件
+		_ = os.Remove(pidFilePath)
+		_ = os.Remove(wrapperScriptPath)
+
+		// 检测是否为Java命令
+		isJavaCmd := strings.Contains(strings.ToLower(jpid.Run), "java ")
+
+		// 创建一个包装脚本来执行命令并捕获正确的PID
+		var scriptContent string
+
+		if isJavaCmd {
+			// 对Java程序做特殊处理
+			scriptContent = fmt.Sprintf(`#!/bin/bash
+# 记录当前进程的PID（脚本本身）
+SCRIPT_PID=$$
+echo $SCRIPT_PID > "%s"
+
+# 执行实际命令
+cd "%s"
+%s &
+
+# 给Java进程一点时间启动
+sleep 1
+
+# 查找Java进程
+CMD_FEATURES=$(echo "%s" | tr ' ' '\n' | grep -v '^-' | grep -v '^java$' | head -3 | tr '\n' '|')
+if [ ! -z "$CMD_FEATURES" ]; then
+  # 使用特征词查找匹配的Java进程
+  JAVA_PID=$(ps -eo pid,ppid,etime,command | grep -v grep | grep '[j]ava' | grep -E "$CMD_FEATURES" | sort -k 3 | head -1 | awk '{print $1}')
+  if [ ! -z "$JAVA_PID" ]; then
+    echo $JAVA_PID > "%s"
+  fi
+fi
+
+# 等待前台进程完成
+wait
+`, pidFilePath, jpid.Catalog, jpid.Run, jpid.Run, pidFilePath)
+		} else {
+			// 非Java命令的处理
+			scriptContent = fmt.Sprintf(`#!/bin/bash
+# 记录当前进程的PID（脚本本身）
+SCRIPT_PID=$$
+echo $SCRIPT_PID > "%s"
+
+# 执行实际命令
+cd "%s"
+%s &
+ACTUAL_PID=$!
+
+# 使用实际PID更新PID文件
+echo $ACTUAL_PID > "%s"
+
+# 等待前台进程完成
+wait $ACTUAL_PID
+EXIT_CODE=$?
+exit $EXIT_CODE
+`, pidFilePath, jpid.Catalog, jpid.Run, pidFilePath)
+		}
+
+		// 写入包装脚本
+		if err = os.WriteFile(wrapperScriptPath, []byte(scriptContent), 0755); err != nil {
+			sendSSEMessage(w, "error", "创建包装脚本失败："+err.Error())
+			return nil, gerror.Wrap(err, "创建包装脚本失败")
+		}
+
+		// 执行包装脚本
+		cmd := exec.Command("bash", wrapperScriptPath)
 		cmd.Dir = jpid.Catalog
 		cmd.Env = append(os.Environ(),
 			fmt.Sprintf("PROJECT_NAME=%s", jpid.Name),
@@ -339,30 +408,113 @@ echo $PID > "%s"
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			sendSSEMessage(w, "error", "创建输出管道失败："+err.Error())
+			_ = os.Remove(wrapperScriptPath)
 			return nil, gerror.Wrap(err, "创建输出管道失败")
 		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			sendSSEMessage(w, "error", "创建错误输出管道失败："+err.Error())
+			_ = os.Remove(wrapperScriptPath)
 			return nil, gerror.Wrap(err, "创建错误输出管道失败")
 		}
 
 		// 启动命令
 		if err = cmd.Start(); err != nil {
 			sendSSEMessage(w, "error", "启动失败："+err.Error())
+			_ = os.Remove(wrapperScriptPath)
 			return nil, gerror.Wrap(err, "启动失败")
 		}
 
-		// 记录进程 PID
-		processPid = cmd.Process.Pid
-		sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 进程 PID: %d\x1b[0m", processPid))
+		// 等待一小段时间让PID文件写入
+		time.Sleep(500 * time.Millisecond)
 
-		// 更新项目 PID
-		if err = service.Jpid().UpdatePid(ctx, jpid.Pid, processPid); err != nil {
-			sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
-			g.Log().Warning(ctx, "更新PID失败", err)
+		// 读取PID文件获取真实PID
+		var realPidFound bool
+		for attempts := 0; attempts < 10; attempts++ {
+			pidBytes, pidErr := os.ReadFile(pidFilePath)
+			if pidErr == nil && len(pidBytes) > 0 {
+				pidStr := strings.TrimSpace(string(pidBytes))
+				pid, pidErr := strconv.Atoi(pidStr)
+				if pidErr == nil && pid > 0 {
+					processPid = pid
+					realPidFound = true
+
+					// 如果是Java命令，额外验证进程类型
+					if isJavaCmd {
+						checkCmd := exec.Command("ps", "-p", pidStr, "-o", "command=")
+						output, _ := checkCmd.Output()
+						if strings.Contains(strings.ToLower(string(output)), "java") {
+							sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 获取到Java进程 PID: %d\x1b[0m", processPid))
+						} else {
+							// 找到的不是Java进程，继续等待
+							realPidFound = false
+						}
+					} else {
+						sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 获取到进程 PID: %d\x1b[0m", processPid))
+					}
+
+					if realPidFound {
+						break
+					}
+				}
+			}
+
+			// 如果未找到有效PID，短暂等待后重试
+			if !realPidFound {
+				time.Sleep(300 * time.Millisecond)
+			}
+		}
+
+		// 如果依然无法获取正确的PID，尝试使用进程搜索
+		if !realPidFound {
+			sendSSEMessage(w, "output", "\x1b[1;33m==> 无法从PID文件获取进程ID，尝试进程搜索...\x1b[0m")
+
+			// 提取命令的关键部分作为搜索特征
+			cmdParts := strings.Split(jpid.Run, " ")
+			var searchFeature string
+			if len(cmdParts) > 0 {
+				// 使用命令的第一个非空参数作为特征
+				for _, part := range cmdParts {
+					if part != "" && part != "nohup" && part != "&" {
+						searchFeature = part
+						break
+					}
+				}
+			}
+
+			if searchFeature != "" {
+				// 使用ps命令查找最近启动的匹配进程
+				searchCmd := exec.Command("bash", "-c", fmt.Sprintf("ps -eo pid,etime,command | grep -v grep | grep '%s' | sort -k 2 | head -1 | awk '{print $1}'", searchFeature))
+				output, err := searchCmd.Output()
+				if err == nil && len(output) > 0 {
+					pidStr := strings.TrimSpace(string(output))
+					pid, err := strconv.Atoi(pidStr)
+					if err == nil && pid > 0 {
+						processPid = pid
+						sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 通过进程搜索找到PID: %d\x1b[0m", processPid))
+						realPidFound = true
+					}
+				}
+			}
+		}
+
+		// 如果找到了有效PID，更新项目PID
+		if realPidFound && processPid > 0 {
+			if err = service.Jpid().UpdatePid(ctx, jpid.Pid, processPid); err != nil {
+				sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
+				g.Log().Warning(ctx, "更新PID失败", err)
+			} else {
+				sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 已更新 PID: %d -> %d\x1b[0m", jpid.Pid, processPid))
+			}
 		} else {
-			sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 已更新 PID: %d -> %d\x1b[0m", jpid.Pid, processPid))
+			// 使用脚本PID作为备选方案
+			processPid = cmd.Process.Pid
+			sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 无法获取实际进程PID，使用脚本PID: %d\x1b[0m", processPid))
+
+			if err = service.Jpid().UpdatePid(ctx, jpid.Pid, processPid); err != nil {
+				sendSSEMessage(w, "output", "\x1b[1;31m==> 警告: 更新 PID 失败\x1b[0m")
+				g.Log().Warning(ctx, "更新PID失败", err)
+			}
 		}
 
 		// 处理输出
@@ -376,9 +528,13 @@ echo $PID > "%s"
 				sendSSEMessage(w, "output", line)
 			}
 			done <- cmd.Wait()
+
+			// 清理临时文件
+			_ = os.Remove(wrapperScriptPath)
+			_ = os.Remove(pidFilePath)
 		}()
 
-		// 直接运行模式：等待前端主动关闭，不设置超时
+		// 直接运行模式：等待命令执行完成
 		err = <-done
 		if err != nil {
 			sendSSEMessage(w, "error", "\x1b[1;31m==> 执行失败："+err.Error()+"\x1b[0m")
