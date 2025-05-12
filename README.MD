@@ -13,6 +13,7 @@
 打包配置信息在[config.yaml](hack/config.yaml)
 > system = linux,darwin,windows
 > arch = 386,amd64,arm,arm64 [uname -s/uname -m]
+> ps: amd64 = x86_64
 > https://juejin.cn/post/7097032561092165640
 ```shell
 gf build
