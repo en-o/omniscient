@@ -75,6 +75,22 @@ func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 		return 0, 0, 0, err
 	}
 
+	// 构建当前运行进程的PID映射
+	runningPids := make(map[int]bool)
+	for _, process := range processes {
+		runningPids[process.Pid] = true
+	}
+
+	// 更新已停止的进程状态
+	for _, project := range existingProjects {
+		if project.Status == 1 && !runningPids[project.Pid] {
+			if err := s.UpdateStatus(ctx, project.Pid, 0); err != nil {
+				g.Log().Warningf(ctx, "更新已停止项目状态失败 [Worker:%s, PID:%d]: %v",
+					currentWorker, project.Pid, err)
+			}
+		}
+	}
+
 	// 构建复合键(worker+port)到项目的映射
 	portToProject := make(map[string]*entity.Jpid)
 	for _, project := range existingProjects {
