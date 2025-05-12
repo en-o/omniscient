@@ -57,7 +57,7 @@ gf build
 PORT=6001
 
 # 根据端口杀死进程
-PID=$(netstat -nlp | grep :$PORT | awk '{print $7}' | cut -d/ -f1)
+PID=$(ss -tlnp | grep ':$PORT' | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2 | sort -u)
 if [ -n "$PID" ]; then
     echo "Killing process $PID"
     kill -9 $PID
