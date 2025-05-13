@@ -1,6 +1,6 @@
 
 // 服务
-export interface Server {
+export interface ServerEntity {
     id: string
     url: string
     description: string

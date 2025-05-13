@@ -13,7 +13,33 @@ npm run start
 # 静态打包
 ## 添加配置
 配置文件next.config.mjs中添加`output: 'export'`
-
+ps: `output: 'export'`, 移除 headers 配置，因为静态导出不支持
+```ts
+const nextConfig: NextConfig = {
+    output: 'export',
+    images: {
+        unoptimized: true, // 静态导出时需要禁用图片优化
+    },
+    // output: 'export', 移除 headers 配置，因为静态导出不支持
+    // async headers() {
+    //     return [
+    //         {
+    //             source: '/:path*',
+    //             headers: [
+    //                 {
+    //                     key: 'Access-Control-Allow-Origin',
+    //                     value: '*',
+    //                 },
+    //             ],
+    //         },
+    //     ]
+    // },
+    // 允许所有主机的请求
+    experimental: {
+        // 移除不支持的 allowedDevOrigins 配置
+    },
+};
+```
 ## 打包
 ```shell
 # 打包完成后，文件在out文件夹下，拷贝out到服务器
