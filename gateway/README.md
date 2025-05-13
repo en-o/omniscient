@@ -44,6 +44,5 @@ gateway/
 │   ├── js/
 ├── src/  # 应用程序源文件夹
 │   ├── app/  # 应用路由器
-│   └── pages/  # 页面路由器
 └── package.json
 ```
