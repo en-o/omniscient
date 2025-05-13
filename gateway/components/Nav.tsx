@@ -1,4 +1,4 @@
-// gateway/components/nav.tsx
+// gateway/components/Nav.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
