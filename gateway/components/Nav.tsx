@@ -6,20 +6,14 @@ import PmLogo from "@components/logos/Pm";
 import ServerManager from './ServerManager'
 import {generateId} from "@utils/uuid";
 import { useServer } from './ServerContext'
+import {ServerEntity} from "@typesss/serverEntity";
 
 // 定义本地存储 key
 const STORAGE_KEY = 'omniscient_pm_servers'
 
 
-interface Server {
-    id: string
-    url: string
-    description: string
-}
-
-
 export default function Nav() {
-    const [servers, setServers] = useState<Server[]>([])
+    const [servers, setServers] = useState<ServerEntity[]>([])
     const [selectedServer, setSelectedServer] = useState<string>('')
     const [showModal, setShowModal] = useState(false)
     const { setSelectedServerUrl } = useServer()
@@ -41,7 +35,7 @@ export default function Nav() {
     }, [])
 
     // 添加列表
-    const handleAddServer = (newServer: Omit<Server, 'id'>) => {
+    const handleAddServer = (newServer: Omit<ServerEntity, 'id'>) => {
         const serverWithId = {
             id: generateId(),
             ...newServer
