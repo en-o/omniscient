@@ -50,12 +50,6 @@ export default function Nav() {
     }
 
 
-    const handleClearServers = () => {
-        setServers([])
-        localStorage.removeItem('servers')
-        setSelectedServer('')
-    }
-
     return (
         <>
             {/* Nav bar with padding */}
@@ -99,7 +93,6 @@ export default function Nav() {
                     servers={servers}
                     onServerAdd={handleAddServer}
                     onServerDelete={handleDeleteServer}
-                    onServersClear={handleClearServers}
                     onClose={() => setShowModal(false)}
                 />
             )}
