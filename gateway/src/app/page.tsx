@@ -1,8 +1,11 @@
 import Image from "next/image";
+import { useServer } from "@components/ServerContext"
+
 
 
 export default function Home() {
-    var serverUrl = "http://192.168.1.93:7777/html/pm.html";
+    const { selectedServerUrl } = useServer()
+
     return (
         // 调整网格布局以更好地适应 iframe 内容
         <div
@@ -11,10 +14,10 @@ export default function Home() {
             <main
                 className="flex flex-col gap-4 row-start-2 w-full h-full"> {/* flex-col for stacked content, w-full h-full to fill grid cell */}
                 {/* 根据是否有 serverUrl 来条件渲染 iframe 或提示 */}
-                {serverUrl ? (
+                {selectedServerUrl ? (
                     <iframe
                         // 使用传入的 serverUrl 作为 iframe 的 src
-                        src={serverUrl}
+                        src={selectedServerUrl}
                         title="服务器内容"
                         // 使 iframe 填充其父容器 (main)
                         className="w-full h-full border-0 shadow-md rounded-lg" // Added styling for better appearance

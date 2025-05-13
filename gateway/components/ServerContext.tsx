@@ -12,6 +12,7 @@ const ServerContext = createContext<ServerContextType>({
     setSelectedServerUrl: () => {}
 })
 
+// https://zh-hans.react.dev/learn/passing-data-deeply-with-context#step-3-provide-the-context
 export function ServerProvider({ children }: { children: ReactNode }) {
     const [selectedServerUrl, setSelectedServerUrl] = useState('')
 

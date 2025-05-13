@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import PmLogo from "@components/logos/Pm";
 import ServerManager from './ServerManager'
 import {generateId} from "@utils/uuid";
-
+import { useServer } from './ServerContext'
 
 interface Server {
     id: string
@@ -18,7 +18,15 @@ export default function Nav() {
     const [servers, setServers] = useState<Server[]>([])
     const [selectedServer, setSelectedServer] = useState<string>('')
     const [showModal, setShowModal] = useState(false)
+    const { setSelectedServerUrl } = useServer()
 
+    // 处理服务器选择变化
+    const handleServerChange = (serverId: string) => {
+        setSelectedServerId(serverId)
+        const selectedServer = servers.find(server => server.id === serverId)
+        // 设置全局数据
+        setSelectedServerUrl(selectedServer ? selectedServer.url : '')
+    }
 
     // 从 localStorage 加载服务器列表
     useEffect(() => {
@@ -66,7 +74,7 @@ export default function Nav() {
                             <i className="bi bi-hdd text-gray-500 text-xl mr-2"></i>
                             <select
                                 value={selectedServer}
-                                onChange={(e) => setSelectedServer(e.target.value)}
+                                onChange={(e) => handleServerChange(e.target.value)}
                                 className="block w-64 px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white"
                             >
                                 <option value="">选择服务器</option>
