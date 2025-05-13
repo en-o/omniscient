@@ -32,8 +32,6 @@ gateway/
 ├── public/  # 静态资源
 │   ├── css/
 │   ├── js/
-│   │   └── bootstrap.bundle.min.js
-│   └── index.html       # Modified frontend HTML
 ├── src/  # 应用程序源文件夹
 │   ├── app/  # 应用路由器
 │   └── pages/  # 页面路由器
