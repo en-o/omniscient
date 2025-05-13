@@ -85,7 +85,7 @@ export default function ServerManager({
                             <div className="grid grid-cols-1 gap-4">
                                 <input
                                     type="url"
-                                    placeholder="服务器 Base URL (例如: http://localhost:8080)"
+                                    placeholder="服务器 URL (例如: http://localhost:8080/html/pm.html)"
                                     required
                                     value={formData.url}
                                     onChange={(e) => setFormData({...formData, url: e.target.value})}
