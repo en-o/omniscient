@@ -59,9 +59,9 @@ export default function Nav() {
     return (
         <>
             <nav className="w-full bg-white dark:bg-gray-800 shadow-md p-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <PmLogo />
+                <div className="max-w-7xl mx-auto flex items-center">
+                    <PmLogo />
+                    <div className="flex-1 flex items-center justify-between">
                         <div className="flex items-center">
                             <i className="bi bi-hdd text-gray-500 text-xl mr-2"></i>
                             <select
@@ -77,14 +77,14 @@ export default function Nav() {
                                 ))}
                             </select>
                         </div>
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+                        >
+                            <i className="bi bi-gear-fill"></i>
+                            服务器管理
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
-                    >
-                        <i className="bi bi-gear-fill"></i>
-                        服务器管理
-                    </button>
                 </div>
             </nav>
 
