@@ -30,7 +30,7 @@ export default function Nav() {
 
     // 从 localStorage 加载服务器列表
     useEffect(() => {
-        const savedServers = localStorage.getItem('omniscient-servers')
+        const savedServers = localStorage.getItem('servers')
         if (savedServers) {
             setServers(JSON.parse(savedServers))
         }
