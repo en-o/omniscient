@@ -1,36 +1,26 @@
 # 聚合html
 1. 在不干扰原本单个服务使用的同时将多个`omniscient` 服务聚合在一起显示
-# todo
-1. 完善页面接口的调用
-2. 处理跨域问题
 
-# env
-```shell
-# node -v
-v20.9.0
-# npm -v
-10.1.0
+# use
+## script
+```bash
+# dir
+cd gateway
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
-
-# use 
-```shell
-# Start
-node server.js
-```
-http://127.0.0.1:3000/index.html
+## access url
+http://127.0.0.1:3000
 
 
-## 目录结构
-```text
-project-manager-node/
-├── public/
-│   ├── css/
-│   │   ├── bootstrap.min.css
-│   │   ├── bootstrap-icons.css
-│   │   └── pm.css
-│   ├── js/
-│   │   └── bootstrap.bundle.min.js
-│   └── index.html       # Modified frontend HTML
-├── server.js            # Node.js backend logic
-└── package.json
-```
+
+# da
+1. [Deploy now](https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
+2. [Read our docs](https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
+3. [Learn](https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
+4. [Examples](https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
