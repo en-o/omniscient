@@ -1,12 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-
-interface Server {
-    id: string
-    url: string
-    description: string
-}
+import {Server} from "@types/server";
 
 interface ServerManagerProps {
     servers: Server[]
