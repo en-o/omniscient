@@ -1,22 +1,21 @@
 // gateway/components/Nav.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import PmLogo from "@components/logos/Pm";
+import { useState } from 'react'
+import PmLogo from "@components/logos/Pm"
 import ServerManager from './ServerManager'
-import {generateId} from "@utils/uuid";
 import { useServer } from './ServerContext'
-import {ServerEntity} from "@typesss/serverEntity";
-
-// 定义本地存储 key
-const STORAGE_KEY = 'omniscient_pm_servers'
-
+import { ServerEntity } from "@typesss/serverEntity"
 
 export default function Nav() {
-    const [servers, setServers] = useState<ServerEntity[]>([])
     const [selectedServer, setSelectedServer] = useState<string>('')
     const [showModal, setShowModal] = useState(false)
-    const { setSelectedServerUrl } = useServer()
+    const {
+        servers,
+        isLoading,
+        error,
+        setSelectedServerUrl
+    } = useServer()
 
     // 处理服务器选择变化
     const handleServerChange = (serverId: string) => {
@@ -26,47 +25,14 @@ export default function Nav() {
         setSelectedServerUrl(selectedServer ? selectedServer.url : '')
     }
 
-    // 从 localStorage 加载服务器列表
-    useEffect(() => {
-        const savedServers = localStorage.getItem(STORAGE_KEY)
-        if (savedServers) {
-            setServers(JSON.parse(savedServers))
-        }
-    }, [])
-
-    // 添加列表
-    const handleAddServer = (newServer: Omit<ServerEntity, 'id'>) => {
-        const serverWithId = {
-            id: generateId(),
-            ...newServer
-        }
-        const updatedServers = [...servers, serverWithId]
-        setServers(updatedServers)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedServers))
-    }
-
-    // 删除列表
-    const handleDeleteServer = (id: string) => {
-        if (!confirm('确定要移除此服务器吗？')) return
-
-        const updatedServers = servers.filter(server => server.id !== id)
-        setServers(updatedServers)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedServers))
-        if (selectedServer === id) {
-            setSelectedServer('')
-        }
-    }
-
-
     return (
         <>
             {/* Nav bar with padding */}
             <nav className="w-full bg-white dark:bg-gray-800 shadow-md p-4">
                 {/* Full-width flex container to push items to edges */}
-                {/* max-w-7xl removed here to allow full width flex positioning */}
                 <div className="flex items-center justify-between w-full">
                     {/* Left side content: Logo and Select, kept together */}
-                    <div className="flex items-center gap-4"> {/* Added gap-4 for space */}
+                    <div className="flex items-center gap-4">
                         <PmLogo />
                         <div className="flex items-center">
                             <i className="bi bi-hdd text-gray-500 text-xl mr-2"></i>
@@ -74,6 +40,7 @@ export default function Nav() {
                                 value={selectedServer}
                                 onChange={(e) => handleServerChange(e.target.value)}
                                 className="block w-64 px-4 py-2 border rounded-md dark:bg-gray-700 dark:text-white"
+                                disabled={isLoading}
                             >
                                 <option value="">选择服务器</option>
                                 {servers.map(server => (
@@ -82,10 +49,14 @@ export default function Nav() {
                                     </option>
                                 ))}
                             </select>
+                            {isLoading && (
+                                <span className="ml-2 text-gray-500">
+                                    <i className="bi bi-arrow-repeat animate-spin"></i>
+                                </span>
+                            )}
                         </div>
                     </div>
                     {/* Right side content: Server Management button */}
-                    {/* justify-between on the parent pushes this to the right */}
                     <button
                         onClick={() => setShowModal(true)}
                         className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
@@ -96,11 +67,16 @@ export default function Nav() {
                 </div>
             </nav>
 
+            {/* 错误提示 */}
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-2 mx-4" role="alert">
+                    <strong className="font-bold">错误: </strong>
+                    <span className="block sm:inline">{error}</span>
+                </div>
+            )}
+
             {showModal && (
                 <ServerManager
-                    servers={servers}
-                    onServerAdd={handleAddServer}
-                    onServerDelete={handleDeleteServer}
                     onClose={() => setShowModal(false)}
                 />
             )}

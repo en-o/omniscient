@@ -5,6 +5,13 @@ ps: 用的浏览器缓存，缓存被删就没了更换浏览器也没了
 
 
 # use
+## 运行数据库脚本
+```shell
+cd gateway
+node scripts/setup-db.js 
+// or
+npm run db:setup
+```
 ## script
 ```bash
 # dir
@@ -13,12 +20,6 @@ cd gateway
 npm install
 # run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 ## access url
 http://127.0.0.1:3000
