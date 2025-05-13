@@ -19,8 +19,23 @@ http://127.0.0.1:3000
 
 
 
-# da
+# 文档
 1. [Deploy now](https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
 2. [Read our docs](https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
 3. [Learn](https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
 4. [Examples](https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
+
+# 项目结构
+> https://nextjs.org/docs/app/getting-started/project-structure
+```text
+gateway/
+├── public/  # 静态资源
+│   ├── css/
+│   ├── js/
+│   │   └── bootstrap.bundle.min.js
+│   └── index.html       # Modified frontend HTML
+├── src/  # 应用程序源文件夹
+│   ├── app/  # 应用路由器
+│   └── pages/  # 页面路由器
+└── package.json
+```
