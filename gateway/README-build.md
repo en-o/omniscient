@@ -11,6 +11,7 @@ npm run start
 ```
 
 # 静态打包
+> [使用这个分支打包，这个分支没有使用 sqlLite](https://gitee.com/etn/omniscient/tree/gateway%E9%9D%99%E6%80%81%E9%A1%B5%E9%9D%A2/)
 ## 添加配置
 配置文件next.config.mjs中添加`output: 'export'`
 ps: `output: 'export'`, 移除 headers 配置，因为静态导出不支持
