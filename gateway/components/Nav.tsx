@@ -22,12 +22,13 @@ export default function Nav() {
 
     // 从 localStorage 加载服务器列表
     useEffect(() => {
-        const savedServers = localStorage.getItem('servers')
+        const savedServers = localStorage.getItem('omniscient-servers')
         if (savedServers) {
             setServers(JSON.parse(savedServers))
         }
     }, [])
 
+    // 添加列表
     const handleAddServer = (newServer: Omit<Server, 'id'>) => {
         const serverWithId = {
             id: generateId(),
@@ -38,6 +39,7 @@ export default function Nav() {
         localStorage.setItem('servers', JSON.stringify(updatedServers))
     }
 
+    // 删除列表
     const handleDeleteServer = (id: string) => {
         if (!confirm('确定要移除此服务器吗？')) return
 
