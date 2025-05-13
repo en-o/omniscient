@@ -6,6 +6,9 @@
 ```bash
 # dir
 cd gateway
+# install
+npm install
+# run
 npm run dev
 # or
 yarn dev
@@ -46,3 +49,6 @@ gateway/
 │   ├── app/  # 应用路由器
 └── package.json
 ```
+
+# 样式参考
+https://github.com/HumeAI/hume-evi-next-js-starter
