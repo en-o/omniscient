@@ -6,13 +6,11 @@ export default function Home() {
 
     return (
         // 调整网格布局以更好地适应 iframe 内容
-        <div
-            className="grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20 font-[family-name:var(--font-geist-sans)]"> {/* Adjusted grid-rows and gap */}
-            <main className="flex flex-col gap-4 row-start-2 w-full h-full">
-                <ServerFrame />
+        <div className="grid grid-rows-[1fr_auto] min-h-screen p-4 gap-4">
+            <main className="w-full h-full">
+                <ServerFrame/>
             </main>
-            <footer
-                className="row-start-3 flex gap-6 flex-wrap items-center justify-center mt-8"> {/* Adjusted gap and added margin-top */}
+            <footer className="flex gap-6 flex-wrap items-center justify-center">
                 <a
                     className="flex items-center gap-2 hover:underline hover:underline-offset-4"
                     href="https://gitee.com/etn/omniscient"
@@ -26,7 +24,7 @@ export default function Home() {
                         width={16}
                         height={16}
                     />
-                    Go to gitee →
+                    Go to gitee by tan →
                 </a>
             </footer>
         </div>
