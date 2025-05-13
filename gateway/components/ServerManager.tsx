@@ -12,7 +12,6 @@ interface ServerManagerProps {
     servers: Server[]
     onServerAdd: (server: Omit<Server, 'id'>) => void
     onServerDelete: (id: string) => void
-    onServersClear: () => void
     onClose: () => void
 }
 
@@ -20,7 +19,6 @@ export default function ServerManager({
                                           servers,
                                           onServerAdd,
                                           onServerDelete,
-                                          onServersClear,
                                           onClose
                                       }: ServerManagerProps) {
     const [formData, setFormData] = useState({
@@ -40,14 +38,14 @@ export default function ServerManager({
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> {/* Added z-50 for modal stacking */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto"> {/* Added max-h and overflow for long lists */}
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-6">
                         <h5 className="text-xl font-bold">服务器管理</h5>
                         <button
                             onClick={onClose}
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                         >
                             <span className="text-2xl">&times;</span>
                         </button>
@@ -56,19 +54,6 @@ export default function ServerManager({
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-3">
                             <h6 className="font-bold">已注册服务器</h6>
-                            {servers.length > 0 && (
-                                <button
-                                    onClick={() => {
-                                        if (confirm('确定要清空所有服务器吗？')) {
-                                            onServersClear()
-                                        }
-                                    }}
-                                    className="text-red-500 hover:text-red-600 text-sm flex items-center gap-1"
-                                >
-                                    <i className="bi bi-trash"></i>
-                                    清空全部
-                                </button>
-                            )}
                         </div>
                         <ul className="space-y-2">
                             {servers.map(server => (
@@ -77,18 +62,19 @@ export default function ServerManager({
                                 >
                                     <span>
                                         {server.url}
-                                        <small className="text-gray-500 ml-2">({server.description})</small>
+                                        <small className="text-gray-500 dark:text-gray-400 ml-2">({server.description})</small>
                                     </span>
                                     <button
                                         onClick={() => onServerDelete(server.id)}
-                                        className="text-red-500 hover:text-red-600"
+                                        className="text-red-500 hover:text-red-600 dark:hover:text-red-400"
+                                        aria-label={`删除服务器 ${server.description}`}
                                     >
-                                        <i className="bi bi-trash"></i>
+                                        <i className="bi bi-trash"> 删除 </i>
                                     </button>
                                 </li>
                             ))}
                             {servers.length === 0 && (
-                                <li className="text-gray-500 text-center p-3">暂无注册服务器</li>
+                                <li className="text-gray-500 dark:text-gray-400 text-center p-3">暂无注册服务器</li>
                             )}
                         </ul>
                     </div>
@@ -103,7 +89,7 @@ export default function ServerManager({
                                     required
                                     value={formData.url}
                                     onChange={(e) => setFormData({...formData, url: e.target.value})}
-                                    className="w-full px-4 py-2 border rounded-md dark:bg-gray-600 dark:text-white"
+                                    className="w-full px-4 py-2 border rounded-md dark:bg-gray-600 dark:text-white dark:border-gray-700"
                                 />
                                 <input
                                     type="text"
@@ -111,11 +97,11 @@ export default function ServerManager({
                                     required
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                    className="w-full px-4 py-2 border rounded-md dark:bg-gray-600 dark:text-white"
+                                    className="w-full px-4 py-2 border rounded-md dark:bg-gray-600 dark:text-white dark:border-gray-700"
                                 />
                                 <button
                                     type="submit"
-                                    className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                                    className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 dark:hover:bg-green-700"
                                 >
                                     添加服务器
                                 </button>
