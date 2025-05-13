@@ -22,7 +22,7 @@ export default function Nav() {
 
     // 处理服务器选择变化
     const handleServerChange = (serverId: string) => {
-        setSelectedServerId(serverId)
+        setSelectedServer(serverId)
         const selectedServer = servers.find(server => server.id === serverId)
         // 设置全局数据
         setSelectedServerUrl(selectedServer ? selectedServer.url : '')
