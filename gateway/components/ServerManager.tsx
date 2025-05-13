@@ -1,7 +1,6 @@
-// gateway/components/ServerManager.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useServer } from './ServerContext'
 
 interface ServerManagerProps {
@@ -9,7 +8,17 @@ interface ServerManagerProps {
 }
 
 export default function ServerManager({ onClose }: ServerManagerProps) {
-    const { servers, addServer, deleteServer, isLoading, error } = useServer()
+    const {
+        servers,
+        addServer,
+        deleteServer,
+        isLoading,
+        error,
+        exportServers,
+        importServers,
+        resetDatabase,
+        loadServers
+    } = useServer()
 
     const [formData, setFormData] = useState({
         url: '',
@@ -17,6 +26,10 @@ export default function ServerManager({ onClose }: ServerManagerProps) {
     })
     const [formError, setFormError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [importResult, setImportResult] = useState<{ imported: number, failed: number } | null>(null)
+
+    // 文件导入引用
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -49,6 +62,73 @@ export default function ServerManager({ onClose }: ServerManagerProps) {
         await deleteServer(id)
     }
 
+    // 处理导出功能
+    const handleExport = async () => {
+        try {
+            await exportServers()
+        } catch (err) {
+            setFormError('导出失败')
+        }
+    }
+
+    // 触发文件选择
+    const handleImportClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click()
+        }
+    }
+
+    // 处理文件导入
+    const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        try {
+            setIsSubmitting(true)
+            setFormError(null)
+            setImportResult(null)
+
+            // 读取文件内容
+            const text = await file.text()
+            const data = JSON.parse(text)
+
+            // 导入数据
+            const result = await importServers(data)
+            setImportResult(result)
+
+            // 重置文件输入
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+        } catch (err) {
+            setFormError(err instanceof Error ? err.message : '导入文件失败')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    // 处理数据库重置
+    const handleReset = async () => {
+        if (!confirm('警告: 此操作将删除所有服务器数据。确定要继续吗？')) {
+            return
+        }
+
+        try {
+            setIsSubmitting(true)
+            setFormError(null)
+
+            const success = await resetDatabase()
+
+            if (success) {
+                setImportResult(null)
+            }
+        } catch (err) {
+            setFormError(err instanceof Error ? err.message : '重置数据库失败')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -69,6 +149,52 @@ export default function ServerManager({ onClose }: ServerManagerProps) {
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
+
+                    {/* 导入结果提示 */}
+                    {importResult && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                            <span className="block sm:inline">
+                                成功导入 {importResult.imported} 个服务器
+                                {importResult.failed > 0 && `, 失败 ${importResult.failed} 个`}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* 数据库操作按钮组 */}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        <button
+                            onClick={handleExport}
+                            className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-1"
+                            disabled={isLoading || servers.length === 0}
+                        >
+                            <i className="bi bi-download"></i> 导出数据
+                        </button>
+
+                        <button
+                            onClick={handleImportClick}
+                            className="px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center gap-1"
+                            disabled={isLoading}
+                        >
+                            <i className="bi bi-upload"></i> 导入数据
+                        </button>
+
+                        <button
+                            onClick={handleReset}
+                            className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center gap-1"
+                            disabled={isLoading}
+                        >
+                            <i className="bi bi-trash"></i> 重置数据库
+                        </button>
+
+                        {/* 隐藏的文件输入 */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileImport}
+                            accept=".json"
+                            className="hidden"
+                        />
+                    </div>
 
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-3">

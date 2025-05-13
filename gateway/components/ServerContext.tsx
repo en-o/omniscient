@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState,  ReactNode } from 'react'
 import { ServerEntity } from "@typesss/serverEntity"
 
 // 服务器上下文接口
@@ -13,6 +13,9 @@ interface ServerContextType {
     addServer: (server: Omit<ServerEntity, 'id'>) => Promise<ServerEntity>
     deleteServer: (id: string) => Promise<boolean>
     loadServers: () => Promise<void>
+    exportServers: () => Promise<void>
+    importServers: (data: any[]) => Promise<{ imported: number, failed: number }>
+    resetDatabase: () => Promise<boolean>
 }
 
 // 创建上下文
@@ -103,10 +106,105 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    // 首次加载时获取服务器列表
-    useEffect(() => {
-        loadServers()
-    }, [])
+    // 导出服务器数据
+    const exportServers = async (): Promise<void> => {
+        try {
+            setIsLoading(true)
+            setError(null)
+
+            // 调用导出API
+            const response = await fetch('/api/servers/export')
+
+            if (!response.ok) {
+                throw new Error('导出服务器数据失败')
+            }
+
+            // 获取 blob 数据
+            const blob = await response.blob()
+
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `servers_backup_${new Date().toISOString().split('T')[0]}.json`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+
+            // 释放 URL 对象
+            window.URL.revokeObjectURL(url)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : '导出服务器数据失败')
+            console.error('导出服务器数据失败:', err)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // 导入服务器数据
+    const importServers = async (data: any[]): Promise<{ imported: number, failed: number }> => {
+        try {
+            setIsLoading(true)
+            setError(null)
+
+            // 调用导入API
+            const response = await fetch('/api/servers/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+
+            if (!response.ok) {
+                throw new Error('导入服务器数据失败')
+            }
+
+            const result = await response.json()
+
+            // 重新加载服务器列表
+            await loadServers()
+
+            return {
+                imported: result.results.imported,
+                failed: result.results.failed
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : '导入服务器数据失败')
+            console.error('导入服务器数据失败:', err)
+            throw err
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // 重置数据库
+    const resetDatabase = async (): Promise<boolean> => {
+        try {
+            setIsLoading(true)
+            setError(null)
+
+            // 调用重置API
+            const response = await fetch('/api/servers/reset', {
+                method: 'POST',
+            })
+
+            if (!response.ok) {
+                throw new Error('重置数据库失败')
+            }
+
+            // 重新加载服务器列表
+            await loadServers()
+
+            return true
+        } catch (err) {
+            setError(err instanceof Error ? err.message : '重置数据库失败')
+            console.error('重置数据库失败:', err)
+            return false
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     // 提供上下文值
     const value = {
@@ -118,6 +216,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
         addServer,
         deleteServer,
         loadServers,
+        exportServers, importServers, resetDatabase
     }
 
     return (
