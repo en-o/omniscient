@@ -58,10 +58,14 @@ export default function Nav() {
 
     return (
         <>
+            {/* Nav bar with padding */}
             <nav className="w-full bg-white dark:bg-gray-800 shadow-md p-4">
-                <div className="max-w-7xl mx-auto flex items-center">
-                    <PmLogo />
-                    <div className="flex-1 flex items-center justify-between">
+                {/* Full-width flex container to push items to edges */}
+                {/* max-w-7xl removed here to allow full width flex positioning */}
+                <div className="flex items-center justify-between w-full">
+                    {/* Left side content: Logo and Select, kept together */}
+                    <div className="flex items-center gap-4"> {/* Added gap-4 for space */}
+                        <PmLogo />
                         <div className="flex items-center">
                             <i className="bi bi-hdd text-gray-500 text-xl mr-2"></i>
                             <select
@@ -77,14 +81,16 @@ export default function Nav() {
                                 ))}
                             </select>
                         </div>
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
-                        >
-                            <i className="bi bi-gear-fill"></i>
-                            服务器管理
-                        </button>
                     </div>
+                    {/* Right side content: Server Management button */}
+                    {/* justify-between on the parent pushes this to the right */}
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+                    >
+                        <i className="bi bi-gear-fill"></i>
+                        服务器管理
+                    </button>
                 </div>
             </nav>
 
