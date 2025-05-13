@@ -36,153 +36,88 @@ interface ServerProviderProps {
 
 // 服务器提供者组件
 export function ServerProvider({ children }: ServerProviderProps) {
-    const [servers, setServers] = useState<ServerEntity[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedServerUrl, setSelectedServerUrl] = useState('');
+    const [servers, setServers] = useState<ServerEntity[]>([])
+    const [selectedServerUrl, setSelectedServerUrl] = useState<string>('')
+    const [isLoading, setIsLoading] = useState<boolean>(true)
+    const [error, setError] = useState<string | null>(null)
 
-    // 初始化加载服务器
-    useEffect(() => {
-        loadServers();
-    }, []);
-
-    // 打开数据库连接
-    const openDB = (): Promise<IDBDatabase> => {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-            request.onerror = (event) => {
-                const error = (event.target as IDBOpenDBRequest).error;
-                reject(new Error(`数据库错误: ${error?.message || '未知错误'}`));
-            };
-
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    // 创建服务器存储，使用id作为键
-                    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                }
-            };
-
-            request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                resolve(db);
-            };
-        });
-    };
-
-    // 加载所有服务器
+    // 加载服务器列表
     const loadServers = async (): Promise<void> => {
-        setIsLoading(true);
-        setError(null);
-
         try {
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
+            setIsLoading(true)
+            setError(null)
 
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => {
-                    setServers(request.result);
-                    setIsLoading(false);
-                    resolve();
-                };
+            const response = await fetch('/api/servers')
 
-                request.onerror = () => {
-                    const err = new Error('加载服务器失败');
-                    setError(err.message);
-                    setIsLoading(false);
-                    reject(err);
-                };
-            });
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : '加载服务器时出错';
-            setError(errorMessage);
-            setIsLoading(false);
-            throw err;
-        }
-    };
-
-    // 添加服务器
-    const addServer = async (serverData: Omit<ServerEntity, 'id'>): Promise<ServerEntity> => {
-        try {
-            // 验证URL格式
-            try {
-                new URL(serverData.url);
-            } catch (e) {
-                throw new Error('无效的URL格式');
+            if (!response.ok) {
+                throw new Error('获取服务器列表失败')
             }
 
-            // 检查URL是否重复
-            const existingServer = servers.find(s => s.url === serverData.url);
-            if (existingServer) {
-                throw new Error('服务器URL已存在');
+            const data = await response.json()
+            setServers(data)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : '加载服务器时出错')
+            console.error('加载服务器失败:', err)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // 添加新服务器
+    const addServer = async (server: Omit<ServerEntity, 'id'>): Promise<ServerEntity> => {
+        try {
+            const response = await fetch('/api/servers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(server),
+            })
+
+            if (!response.ok) {
+                throw new Error('添加服务器失败')
             }
 
-            // 生成唯一ID
-            const newServer: ServerEntity = {
-                ...serverData,
-                id: `server_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            };
+            const newServer = await response.json()
 
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
+            // 更新本地状态
+            setServers(prev => [...prev, newServer])
 
-            return new Promise((resolve, reject) => {
-                const request = store.add(newServer);
-
-                request.onsuccess = () => {
-                    // 更新本地状态
-                    setServers(prev => [...prev, newServer]);
-                    resolve(newServer);
-                };
-
-                request.onerror = () => {
-                    reject(new Error('添加服务器失败'));
-                };
-            });
+            return newServer
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : '添加服务器时出错';
-            setError(errorMessage);
-            throw err;
+            setError(err instanceof Error ? err.message : '添加服务器时出错')
+            console.error('添加服务器失败:', err)
+            throw err
         }
-    };
+    }
 
     // 删除服务器
     const deleteServer = async (id: string): Promise<boolean> => {
         try {
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
+            const response = await fetch(`/api/servers/${id}`, {
+                method: 'DELETE',
+            })
 
-            return new Promise((resolve, reject) => {
-                const request = store.delete(id);
+            if (!response.ok) {
+                throw new Error('删除服务器失败')
+            }
 
-                request.onsuccess = () => {
-                    // 更新本地状态
-                    setServers(prev => prev.filter(server => server.id !== id));
+            // 更新本地状态
+            setServers(prev => prev.filter(server => server.id !== id))
 
-                    // 如果删除了当前选中的服务器，清除选中状态
-                    const deletedServer = servers.find(s => s.id === id);
-                    if (deletedServer && deletedServer.url === selectedServerUrl) {
-                        setSelectedServerUrl('');
-                    }
+            // 如果删除的是当前选中的服务器，清除选择
+            const deletedServer = servers.find(server => server.id === id)
+            if (deletedServer && deletedServer.url === selectedServerUrl) {
+                setSelectedServerUrl('')
+            }
 
-                    resolve(true);
-                };
-
-                request.onerror = () => {
-                    reject(new Error('删除服务器失败'));
-                };
-            });
+            return true
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : '删除服务器时出错';
-            setError(errorMessage);
-            throw err;
+            setError(err instanceof Error ? err.message : '删除服务器时出错')
+            console.error('删除服务器失败:', err)
+            return false
         }
-    };
+    }
 
     // 导出服务器数据
     const exportServers = async (): Promise<void> => {
