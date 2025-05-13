@@ -7,6 +7,10 @@ import ServerManager from './ServerManager'
 import {generateId} from "@utils/uuid";
 import { useServer } from './ServerContext'
 
+// 定义本地存储 key
+const STORAGE_KEY = 'omniscient_pm_servers'
+
+
 interface Server {
     id: string
     url: string
@@ -30,7 +34,7 @@ export default function Nav() {
 
     // 从 localStorage 加载服务器列表
     useEffect(() => {
-        const savedServers = localStorage.getItem('servers')
+        const savedServers = localStorage.getItem(STORAGE_KEY)
         if (savedServers) {
             setServers(JSON.parse(savedServers))
         }
@@ -44,7 +48,7 @@ export default function Nav() {
         }
         const updatedServers = [...servers, serverWithId]
         setServers(updatedServers)
-        localStorage.setItem('servers', JSON.stringify(updatedServers))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedServers))
     }
 
     // 删除列表
@@ -53,7 +57,7 @@ export default function Nav() {
 
         const updatedServers = servers.filter(server => server.id !== id)
         setServers(updatedServers)
-        localStorage.setItem('servers', JSON.stringify(updatedServers))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedServers))
         if (selectedServer === id) {
             setSelectedServer('')
         }
