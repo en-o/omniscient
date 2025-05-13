@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {ServerEntity} from "@types/serverEntity";
+import {ServerEntity} from "@typesss/serverEntity";
 
 interface ServerManagerProps {
     servers: ServerEntity[]

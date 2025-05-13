@@ -1,10 +1,10 @@
 'use client'
 
-import { useServer } from "@components/ServerContext"
-    import { useState } from "react"
+import {useServer} from "@components/ServerContext"
+import {useState} from "react"
 
 export default function ServerFrame() {
-    const { selectedServerUrl } = useServer()
+    const {selectedServerUrl} = useServer()
     const [iframeError, setIframeError] = useState(false)
 
     // 处理 URL
@@ -27,7 +27,8 @@ export default function ServerFrame() {
 
     if (!selectedServerUrl) {
         return (
-            <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+            <div
+                className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                 请在导航栏选择一个服务器
             </div>
         )
@@ -36,7 +37,8 @@ export default function ServerFrame() {
     return (
         <>
             {iframeError ? (
-                <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-red-500 dark:text-red-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                <div
+                    className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-red-500 dark:text-red-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                     无法加载页面，请重新设置服务器 URL
                 </div>
             ) : (

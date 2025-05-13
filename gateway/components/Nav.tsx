@@ -6,7 +6,7 @@ import PmLogo from "@components/logos/Pm";
 import ServerManager from './ServerManager'
 import {generateId} from "@utils/uuid";
 import { useServer } from './ServerContext'
-import {ServerEntity} from "@types/serverEntity";
+import {ServerEntity} from "@typesss/serverEntity";
 
 // 定义本地存储 key
 const STORAGE_KEY = 'omniscient_pm_servers'
