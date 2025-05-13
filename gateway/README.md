@@ -17,7 +17,17 @@ bun dev
 ## access url
 http://127.0.0.1:3000
 
-
+# 环境
+```shell
+# react
+^19.0.0
+# next
+15.3.2
+# node -v
+v20.9.0
+# npm -v
+10.1.0
+```
 
 # 文档
 1. [Deploy now](https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app)
