@@ -1,16 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-
-interface Server {
-    id: string
-    url: string
-    description: string
-}
+import {ServerEntity} from "@typesss/serverEntity";
 
 interface ServerManagerProps {
-    servers: Server[]
-    onServerAdd: (server: Omit<Server, 'id'>) => void
+    servers: ServerEntity[]
+    onServerAdd: (server: Omit<ServerEntity, 'id'>) => void
     onServerDelete: (id: string) => void
     onClose: () => void
 }
