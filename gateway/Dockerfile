@@ -1,16 +1,18 @@
 # syntax=docker.io/docker/dockerfile:1
 
-FROM node:20.9.0-alpine AS base
+FROM node:20.9.0-slim AS base
 
 # 1. Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat sqlite sqlite-dev python3 make g++
+# RUN #apk add --no-cache libc6-compat sqlite sqlite-dev python3 make g++
+RUN apt-get update && apt-get install -y python3 make g++
 
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
+# RUN npm rebuild sqlite3 --build-from-source
 RUN npm install --build-from-source
 
 
