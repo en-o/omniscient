@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { ServerEntity } from "@typesss/serverEntity"
-import {GET} from "@/app/api/servers/export/route";
 
 // 定义服务器上下文接口
 interface ServerContextType {
