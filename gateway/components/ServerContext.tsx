@@ -56,6 +56,11 @@ export function ServerProvider({ children }: ServerProviderProps) {
 
             const data = await response.json()
             setServers(data)
+
+            // 如果存在服务器且当前没有选中的服务器，则选择第一个
+            if (data.length > 0 && !selectedServerUrl) {
+                setSelectedServerUrl(data[0].url)
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : '加载服务器时出错')
             console.error('加载服务器失败:', err)
