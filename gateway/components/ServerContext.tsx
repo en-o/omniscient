@@ -161,13 +161,34 @@ export function ServerProvider({ children }: ServerProviderProps) {
 
     /**
      * 导入服务器数据
-     * 根据后端API优化的导入函数
+     * 根据后端API优化的导入函数，并过滤掉重复的服务器名称
      */
-    const importServers = async (importData: any[]): Promise<{ total: number; imported: number; failed: number }> => {
+    const importServers = async (importData: any[]): Promise<{ total: number; imported: number; failed: number; skipped: number }> => {
         try {
             // 验证导入数据格式
             if (!Array.isArray(importData)) {
                 throw new Error('无效的导入数据格式');
+            }
+
+            // 获取当前所有服务器的描述（名称），用于检查重复
+            const existingDescriptions = servers.map(s => s.description);
+
+            // 过滤掉名称重复的服务器
+            const filteredData = importData.filter(server => {
+                return server.description && !existingDescriptions.includes(server.description);
+            });
+
+            // 记录被跳过的数量（因名称重复）
+            const skippedCount = importData.length - filteredData.length;
+
+            // 如果过滤后没有数据要导入
+            if (filteredData.length === 0) {
+                return {
+                    total: importData.length,
+                    imported: 0,
+                    failed: 0,
+                    skipped: skippedCount
+                };
             }
 
             // 发送到后端API处理导入
@@ -176,7 +197,7 @@ export function ServerProvider({ children }: ServerProviderProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(importData),
+                body: JSON.stringify(filteredData),
             });
 
             if (!response.ok) {
@@ -191,9 +212,10 @@ export function ServerProvider({ children }: ServerProviderProps) {
             await loadServers();
 
             return {
-                total: result.results.total,
+                total: importData.length,
                 imported: result.results.imported,
-                failed: result.results.failed
+                failed: result.results.failed,
+                skipped: skippedCount
             };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '导入服务器数据时出错';
