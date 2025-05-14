@@ -127,35 +127,37 @@ export function ServerProvider({ children }: ServerProviderProps) {
                 throw new Error('没有可导出的服务器数据');
             }
 
-            const response = await fetch(`/api/servers/export`, {
+            // 发起请求获取数据
+            const response = await fetch('/api/servers/export', {
                 method: 'GET',
-            })
+            });
 
-            // 将数据转换为JSON字符串
-            const dataStr = JSON.stringify(response.json(), null, 2);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `导出失败: ${response.status}`);
+            }
 
-            // 创建Blob对象
-            const blob = new Blob([dataStr], { type: 'application/json' });
+            // 从响应中获取 blob
+            const blob = await response.blob();
 
-            // 创建下载链接
+            // 创建下载链接并触发下载
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = EXPORT_FILENAME;
+            a.style.display = 'none';
 
-            // 触发下载
             document.body.appendChild(a);
             a.click();
 
             // 清理
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : '导出服务器数据时出错';
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '导出服务器数据时出错';
             setError(errorMessage);
-            throw err;
+            console.error('导出错误:', error);
         }
     };
 
