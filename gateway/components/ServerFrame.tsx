@@ -40,14 +40,25 @@ export default function ServerFrame() {
         setIsLoading(true)
         setIframeError(false)
 
+        // 设置30秒超时
+        const timeoutId = setTimeout(() => {
+            setIsLoading(false)
+            setIframeError(true)
+            setCurrentUrl(null)
+        }, 30000) // 30秒超时
+
         // 尝试访问URL检查其是否可用
         fetch(formattedUrl, { method: 'HEAD', mode: 'no-cors' })
             .then(() => {
+                // 清除超时计时器
+                clearTimeout(timeoutId)
                 // 因为no-cors模式总是成功，我们认为请求至少能发出去
                 setCurrentUrl(formattedUrl)
                 setIframeError(false)
             })
             .catch(() => {
+                // 清除超时计时器
+                clearTimeout(timeoutId)
                 // 请求失败，URL不可访问
                 setIframeError(true)
                 setCurrentUrl(null)
@@ -55,6 +66,11 @@ export default function ServerFrame() {
             .finally(() => {
                 setIsLoading(false)
             })
+
+        // 清理函数，组件卸载或者依赖项变化时执行
+        return () => {
+            clearTimeout(timeoutId)
+        }
     }, [selectedServerUrl])
 
     // 处理 iframe 加载错误
@@ -79,9 +95,14 @@ export default function ServerFrame() {
     if (isLoading) {
         return (
             <div className="w-full h-[calc(100vh-8rem)] flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
-                    <span className="text-gray-600 dark:text-gray-300">正在验证服务器连接...</span>
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
+                        <span className="text-gray-600 dark:text-gray-300">正在验证服务器连接...</span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        如果30秒内未响应，将视为连接失败
+                    </p>
                 </div>
             </div>
         )
