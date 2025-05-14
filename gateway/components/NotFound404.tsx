@@ -7,7 +7,7 @@ export default function NotFound404() {
         <div className="w-full h-[calc(100vh-8rem)] flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-sm">
             <div className="text-center">
                 <Image
-                    src="/404.svg"
+                    src="/stop.svg"
                     alt="404 错误图标"
                     width={200}
                     height={200}
