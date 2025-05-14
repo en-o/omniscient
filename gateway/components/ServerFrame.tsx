@@ -114,7 +114,7 @@ export default function ServerFrame() {
 
     return (
         <iframe
-            src={currentUrl}
+            src={currentUrl || undefined}
             title="服务器内容"
             className="w-full h-[calc(100vh-8rem)] border-0 rounded-lg bg-white shadow-sm"
             onError={handleIframeError}
