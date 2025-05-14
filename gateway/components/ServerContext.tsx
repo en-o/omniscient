@@ -226,19 +226,30 @@ export function ServerProvider({ children }: ServerProviderProps) {
         }
     };
 
-    // 重置数据库
-    const resetDatabase = async (): Promise<boolean> => {
+// 重置数据库
+    const resetDatabase = async (): Promise<{ success: boolean; message: string }> => {
         try {
-
             const response = await fetch(`/api/servers/reset`, {
                 method: 'POST',
             });
+
+            const result = await response.json();
+
+            // 重新加载服务器列表
             await loadServers();
-            return response.ok
+
+            return {
+                success: response.ok,
+                message: result.message || (response.ok ? '数据库已成功重置' : '重置数据库失败')
+            };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '重置数据库时出错';
             setError(errorMessage);
-            throw err;
+
+            return {
+                success: false,
+                message: errorMessage
+            };
         }
     };
 
