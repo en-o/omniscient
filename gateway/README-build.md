@@ -74,4 +74,9 @@ npm run build
 2. 进入standalone目录，执行node server.js
 
 
-
+## Building for docker
+```bash
+npm install
+docker build  -t  tannnn/omniscient-gateway:0.0.1 .
+docker run -p 3000:3000 tannnn/omniscient-gateway:0.0.1
+```
