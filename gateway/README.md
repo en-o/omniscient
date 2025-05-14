@@ -15,6 +15,7 @@ npm run db:setup
 
 ## sqlite3 安装问题
 > npm install 失败
+> 删掉lock文件、node_modules
 1. [安装 Visual Studio 及 C++ 工具链](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/)
 ```text
 1. 选择“使用 C++ 的桌面开发”工作负载。
@@ -27,7 +28,7 @@ npm run db:setup
 2. 安装 Python
 ```shell
 # 不想手动安装 Visual Studio 和 Python，可以使用 windows-build-tools 来自动安装
-npm install --global windows-build-tools
+npm install --g --production windows-build-tools
 ```
 4. 清理 npm 缓存并重新安装
 ```shell
