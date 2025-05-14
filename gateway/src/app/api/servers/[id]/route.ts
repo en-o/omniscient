@@ -1,17 +1,22 @@
-// app/api/servers/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ServerRepository } from '@utils/database';
+
+// 使用正确的参数类型
+type Context = {
+    params: {
+        id: string;
+    }
+}
 
 // 删除服务器
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: Context
 ) {
     try {
         const { id } = params;
-
-        // 检查服务器是否存在
         const server = await ServerRepository.getById(id);
+
         if (!server) {
             return NextResponse.json(
                 { error: '服务器不存在' },
@@ -20,7 +25,6 @@ export async function DELETE(
         }
 
         await ServerRepository.delete(id);
-
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('删除服务器失败:', error);
@@ -34,7 +38,7 @@ export async function DELETE(
 // 获取单个服务器
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: Context
 ) {
     try {
         const { id } = params;
