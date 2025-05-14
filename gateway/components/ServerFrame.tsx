@@ -2,6 +2,7 @@
 
 import {useServer} from "@components/ServerContext"
 import {useState, useEffect} from "react"
+import NotFound404 from "@components/NotFound404"
 
 export default function ServerFrame() {
     const {selectedServerUrl} = useServer()
@@ -54,12 +55,7 @@ export default function ServerFrame() {
     }
 
     if (iframeError) {
-        return (
-            <div
-                className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-red-500 dark:text-red-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                无法加载页面，请重新设置服务器 URL
-            </div>
-        )
+        return <NotFound404 />
     }
 
     return (
