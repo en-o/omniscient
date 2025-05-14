@@ -132,7 +132,7 @@ export function ServerProvider({ children }: ServerProviderProps) {
             })
 
             // 将数据转换为JSON字符串
-            const dataStr = JSON.stringify(response, null, 2);
+            const dataStr = JSON.stringify(response.json(), null, 2);
 
             // 创建Blob对象
             const blob = new Blob([dataStr], { type: 'application/json' });
@@ -159,52 +159,42 @@ export function ServerProvider({ children }: ServerProviderProps) {
         }
     };
 
-    // 导入服务器数据
-    const importServers = async (importData: any): Promise<{ imported: number; failed: number }> => {
+    /**
+     * 导入服务器数据
+     * 根据后端API优化的导入函数
+     */
+    const importServers = async (importData: any[]): Promise<{ total: number; imported: number; failed: number }> => {
         try {
             // 验证导入数据格式
-            if (!importData || !Array.isArray(importData.data)) {
+            if (!Array.isArray(importData)) {
                 throw new Error('无效的导入数据格式');
             }
 
-            const serversToImport = importData.data;
-            const result = { imported: 0, failed: 0 };
-
-
-            // 获取当前所有URL，用于检查重复
-            const existingUrls = servers.map(s => s.url);
-
-            // 处理每个服务器
-            const importPromises = serversToImport.map(async (server: any) => {
-                // 基本验证
-                if (!server.url || !server.description || !server.id) {
-                    result.failed++;
-                    return;
-                }
-
-                // 检查URL是否重复
-                if (existingUrls.includes(server.url)) {
-                    result.failed++;
-                    return;
-                }
-
-                // 添加到数据库
-                try {
-                    const response = await fetch(`/api/servers/import`, {
-                        method: 'POST',
-                    })
-                } catch (e) {
-                    result.failed++;
-                }
+            // 发送到后端API处理导入
+            const response = await fetch('/api/servers/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(importData),
             });
 
-            // 等待所有导入操作完成
-            await Promise.all(importPromises);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '导入服务器数据失败');
+            }
 
-            // 重新加载服务器列表以反映导入结果
+            // 获取后端返回的导入结果
+            const result = await response.json();
+
+            // 导入完成后重新加载服务器列表
             await loadServers();
 
-            return result;
+            return {
+                total: result.results.total,
+                imported: result.results.imported,
+                failed: result.results.failed
+            };
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '导入服务器数据时出错';
             setError(errorMessage);
@@ -220,7 +210,7 @@ export function ServerProvider({ children }: ServerProviderProps) {
                 method: 'POST',
             });
             await loadServers();
-           return response.ok
+            return response.ok
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '重置数据库时出错';
             setError(errorMessage);
