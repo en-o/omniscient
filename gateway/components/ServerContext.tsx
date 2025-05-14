@@ -21,11 +21,6 @@ interface ServerContextType {
 // 创建上下文
 const ServerContext = createContext<ServerContextType | undefined>(undefined);
 
-// 数据库名称和对象仓库名称
-const DB_NAME = 'pm-gateway';
-const DB_VERSION = 1;
-const STORE_NAME = 'servers';
-
 // 导出数据文件名
 const EXPORT_FILENAME = 'pm-gateway-servers.json';
 
@@ -40,6 +35,12 @@ export function ServerProvider({ children }: ServerProviderProps) {
     const [selectedServerUrl, setSelectedServerUrl] = useState<string>('')
     const [isLoading, setIsLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
+
+    // 首次加载时获取服务器列表
+    useEffect(() => {
+        loadServers()
+    }, [])
+
 
     // 加载服务器列表
     const loadServers = async (): Promise<void> => {
