@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { ServerEntity } from "@typesss/serverEntity"
+import {GET} from "@/app/api/servers/export/route";
 
 // 定义服务器上下文接口
 interface ServerContextType {
@@ -126,15 +127,12 @@ export function ServerProvider({ children }: ServerProviderProps) {
                 throw new Error('没有可导出的服务器数据');
             }
 
-            // 创建一个包含导出数据和元数据的对象
-            const exportData = {
-                version: DB_VERSION,
-                timestamp: new Date().toISOString(),
-                data: servers
-            };
+            const response = await fetch(`/api/servers/export`, {
+                method: 'GET',
+            })
 
             // 将数据转换为JSON字符串
-            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataStr = JSON.stringify(response, null, 2);
 
             // 创建Blob对象
             const blob = new Blob([dataStr], { type: 'application/json' });
@@ -172,9 +170,6 @@ export function ServerProvider({ children }: ServerProviderProps) {
             const serversToImport = importData.data;
             const result = { imported: 0, failed: 0 };
 
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
 
             // 获取当前所有URL，用于检查重复
             const existingUrls = servers.map(s => s.url);
@@ -195,20 +190,9 @@ export function ServerProvider({ children }: ServerProviderProps) {
 
                 // 添加到数据库
                 try {
-                    return new Promise<void>((resolve, reject) => {
-                        const request = store.add(server);
-
-                        request.onsuccess = () => {
-                            result.imported++;
-                            existingUrls.push(server.url); // 更新URL列表防止重复导入
-                            resolve();
-                        };
-
-                        request.onerror = () => {
-                            result.failed++;
-                            resolve(); // 继续处理其他记录
-                        };
-                    });
+                    const response = await fetch(`/api/servers/import`, {
+                        method: 'POST',
+                    })
                 } catch (e) {
                     result.failed++;
                 }
@@ -231,27 +215,12 @@ export function ServerProvider({ children }: ServerProviderProps) {
     // 重置数据库
     const resetDatabase = async (): Promise<boolean> => {
         try {
-            const db = await openDB();
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
 
-            return new Promise((resolve, reject) => {
-                const request = store.clear();
-
-                request.onsuccess = async () => {
-                    // 清空本地状态
-                    setServers([]);
-                    setSelectedServerUrl('');
-
-                    // 重新加载空数据
-                    await loadServers();
-                    resolve(true);
-                };
-
-                request.onerror = () => {
-                    reject(new Error('重置数据库失败'));
-                };
+            const response = await fetch(`/api/servers/reset`, {
+                method: 'POST',
             });
+            await loadServers();
+           return response.ok
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : '重置数据库时出错';
             setError(errorMessage);

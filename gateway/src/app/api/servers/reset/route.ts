@@ -1,5 +1,5 @@
-// app/api/servers/reset/route.ts
 import { NextResponse } from 'next/server';
+import {getDb} from "@utils/database";
 
 // 重置数据库
 export async function POST() {

@@ -5,7 +5,6 @@ import { useState } from 'react'
 import PmLogo from "@components/logos/Pm"
 import ServerManager from './ServerManager'
 import { useServer } from './ServerContext'
-import { ServerEntity } from "@typesss/serverEntity"
 
 export default function Nav() {
     const [selectedServer, setSelectedServer] = useState<string>('')
