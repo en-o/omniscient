@@ -215,7 +215,10 @@
                                     </button></li>
                                 `}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><button class="dropdown-item" onclick="showEdit(${project.pid}, '${escapeHtml(project.script)}', '${escapeHtml(project.description)}')">
+                                <li><button class="dropdown-item edit-project-btn"
+                                    data-pid="${project.pid}"
+                                    data-script="${escapeHtml(project.script)}"
+                                    data-description="${escapeHtml(project.description)}">
                                     <i class="bi bi-pencil text-info"></i> 编辑
                                 </button></li>
                             </ul>
@@ -277,6 +280,16 @@
         }
     });
 
+    // 编辑事件
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-project-btn')) {
+            const button = e.target.closest('.edit-project-btn');
+            const pid = button.getAttribute('data-pid');
+            const script = button.getAttribute('data-script');
+            const description = button.getAttribute('data-description');
+            showEdit(pid, script, description);
+        }
+    });
 
     function handleContextMenu(action) {
         if (action === 'copy' && contextMenuTarget) {
@@ -435,6 +448,7 @@
 
     // 显示编辑模态框
     function showEdit(pid, script, description) {
+        console.log("showEdit called with PID:", pid);
         document.getElementById('editPid').value = pid;
         document.getElementById('editScript').value = script;
         document.getElementById('editDescription').value = description;
