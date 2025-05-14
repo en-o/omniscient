@@ -2,46 +2,48 @@
 
 FROM node:20.9.0-slim AS base
 
-# 1. Install dependencies only when needed
+# 1. Dependencies stage
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-# RUN #apk add --no-cache libc6-compat sqlite sqlite-dev python3 make g++
-RUN apt-get update && apt-get install -y python3 make g++
-
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-# RUN npm rebuild sqlite3 --build-from-source
-RUN npm install --build-from-source
+# Combine apt commands and cleanup in single layer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ && \
+    rm -rf /var/lib/apt/lists/*
 
+# Install dependencies
+COPY package*.json ./
+RUN npm install  --build-from-source
 
-# 2. Rebuild the source code only when needed
+# 2. Builder stage
 FROM base AS builder
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# 3. Production image, copy all the files and run next
+# 3. Runner stage
 FROM base AS runner
 WORKDIR /app
 
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+# Create non-root user more efficiently
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nextjs
 
-COPY --from=builder /app/public ./public
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Set proper permissions
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
 
 USER nextjs
 
 EXPOSE 3000
+ENV PORT=3000 \
+    NODE_ENV=production \
+    HOSTNAME="0.0.0.0"
 
-ENV PORT=3000
-
-CMD HOSTNAME="0.0.0.0" node server.js
+CMD ["node", "server.js"]
