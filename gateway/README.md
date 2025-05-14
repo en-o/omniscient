@@ -17,14 +17,9 @@ npm run db:setup
 > npm install 失败
 > 删掉lock文件、node_modules
 1. [安装 Visual Studio 及 C++ 工具链](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/)
-```text
-1. 选择“使用 C++ 的桌面开发”工作负载。
-2. 确保安装了以下组件：
-2.1 Visual C++ 工具集
-2.2 Windows SDK
-2.3 CMake 工具
-2.4 适用于 C++ 的测试工具
-```
+我也不知道按了那些了，反正就是错了就看日志然后安
+2. ![Visual_Studio.png](../doc/images/Visual_Studio.png)
+
 2. 安装 Python
 ```shell
 # 不想手动安装 Visual Studio 和 Python，可以使用 windows-build-tools 来自动安装
@@ -61,7 +56,7 @@ http://127.0.0.1:3000
 # next
 15.3.2
 # node -v
-v20.9.0
+v20.9.0  or  v22.14.0  
 # npm -v
 10.1.0
 ```
