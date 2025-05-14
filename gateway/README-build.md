@@ -78,6 +78,7 @@ npm run build
 > https://github.com/vercel/next.js/tree/canary/examples/with-docker-multi-env
 ```bash
 npm install
+npm run build
 docker build  -t  tannnn/omniscient-gateway:0.0.1 .
 docker run -p 3000:3000 tannnn/omniscient-gateway:0.0.1
 ```
