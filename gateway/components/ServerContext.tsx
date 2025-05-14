@@ -14,7 +14,7 @@ interface ServerContextType {
     deleteServer: (id: string) => Promise<boolean>;
     exportServers: () => Promise<void>;
     importServers: (data: any) => Promise<{ imported: number; failed: number }>;
-    resetDatabase: () => Promise<boolean>;
+    resetDatabase: () => Promise<{ success: boolean; message: string }>;
     loadServers: () => Promise<void>;
 }
 
