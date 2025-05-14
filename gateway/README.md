@@ -18,9 +18,10 @@ npm run db:setup
 > 删掉lock文件、node_modules
 1. [安装 Visual Studio 及 C++ 工具链](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/)
 我也不知道按了那些了，反正就是错了就看日志然后安
-2. ![Visual_Studio.png](../doc/images/Visual_Studio.png)
+ ![Visual_Studio.png](../doc/images/Visual_Studio.png)
 
 2. 安装 Python
+3. 安装 windows-build-tools
 ```shell
 # 不想手动安装 Visual Studio 和 Python，可以使用 windows-build-tools 来自动安装
 npm install --g --production windows-build-tools
@@ -29,10 +30,6 @@ npm install --g --production windows-build-tools
 ```shell
 npm cache clean --force
 npm install
-```
-5. 如果编译仍然失败，可以尝试安装预编译的 sqlite3 二进制文件
-```shell
-npm install sqlite3 --build-from-source=false
 ```
 
 # use
