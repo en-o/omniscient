@@ -2,7 +2,6 @@
 
 FROM node:20.9.0-alpine AS base
 
-
 # Step 1. Rebuild the source code only when needed
 FROM base AS builder
 
@@ -16,59 +15,63 @@ RUN \
   elif [ -f package-lock.json ]; then npm ci; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i; \
   # Allow install without lockfile, so example works even without Node.js installed locally
-  else echo "Warning: Lockfile not found. It is recommended to commit lockfiles to version control." && yarn install; \
+  else echo "Warning: Lockfile not found. It is recommended to commit lockfiles to version control." && npm install; \
   fi
 
 # 先复制配置文件
 COPY next.config.js* ./
 COPY tsconfig.json* ./
+COPY tailwind.config.js* ./
+COPY postcss.config.js* ./
 
-# 然后再复制其他文件和目录
+# 然后再复制源代码和公共资源
 COPY src ./src
 COPY public ./public
 COPY components ./components
-COPY data ./data
+#COPY data ./data
 COPY utils ./utils
 COPY types ./types
 COPY scripts ./scripts
 
+# 运行数据库设置脚本
+RUN npm run db:setup
 
 # Environment variables must be present at build time
-# https://github.com/vercel/next.js/discussions/14030
 ARG ENV_VARIABLE
 ENV ENV_VARIABLE=${ENV_VARIABLE}
 ARG NEXT_PUBLIC_ENV_VARIABLE
 ENV NEXT_PUBLIC_ENV_VARIABLE=${NEXT_PUBLIC_ENV_VARIABLE}
 
-# Next.js collects completely anonymous telemetry data about general usage. Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line to disable telemetry at build time
-# ENV NEXT_TELEMETRY_DISABLED 1
+# 禁用 Next.js 遥测数据收集
+ENV NEXT_TELEMETRY_DISABLED=1
 
-
-# Build Next.js based on the preferred package manager
-RUN \
-  if [ -f yarn.lock ]; then yarn build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then pnpm build; \
-  else npm run build; \
-  fi
-
-# Note: It is not necessary to add an intermediate step that does a full copy of `node_modules` here
+# 使用 turbopack 进行生产构建（如果支持）
+RUN npm run build
 
 # Step 2. Production image, copy all the files and run next
 FROM base AS runner
 
 WORKDIR /app
 
+# 安装 SQLite 运行时依赖
+RUN apk add --no-cache sqlite-libs sqlite-dev
+
 # Don't run production as root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# 复制数据库文件和脚本（确保有适当的权限）
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/data ./data
+
+# 创建数据库目录并设置适当的权限
+RUN mkdir -p /app/data/db && chown -R nextjs:nodejs /app/data
+
 USER nextjs
 
 COPY --from=builder /app/public ./public
 
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -78,9 +81,11 @@ ENV ENV_VARIABLE=${ENV_VARIABLE}
 ARG NEXT_PUBLIC_ENV_VARIABLE
 ENV NEXT_PUBLIC_ENV_VARIABLE=${NEXT_PUBLIC_ENV_VARIABLE}
 
-# Uncomment the following line to disable telemetry at run time
-# ENV NEXT_TELEMETRY_DISABLED 1
+# 禁用 Next.js 遥测数据收集
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Note: Don't expose ports here, Compose will handle that for us
+# 暴露默认的 Next.js 端口
+EXPOSE 3000
 
+# 使用 Node.js 启动服务器
 CMD ["node", "server.js"]
