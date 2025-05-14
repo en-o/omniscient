@@ -53,8 +53,8 @@ FROM base AS runner
 
 WORKDIR /app
 
-# 安装 SQLite 运行时依赖
-RUN apk add --no-cache sqlite-libs sqlite-dev
+# 安装 SQLite 运行时依赖 - 在 Alpine 中正确的包名
+RUN apk add --no-cache sqlite3
 
 # Don't run production as root
 RUN addgroup --system --gid 1001 nodejs
