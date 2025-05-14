@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ServerRepository } from '@utils/database';
 
-// 使用正确的参数类型
+// 参数类型，
 type Context = {
-    params: {
+    params: Promise<{
         id: string;
-    }
+    }>
 }
 
 // 删除服务器
@@ -14,7 +14,11 @@ export async function DELETE(
     { params }: Context
 ) {
     try {
-        const { id } = params;
+        // 等待 params 解析完成
+        const resolvedParams = await params;
+        const { id } = resolvedParams;
+
+        console.log("id", id);
         const server = await ServerRepository.getById(id);
 
         if (!server) {
@@ -41,7 +45,10 @@ export async function GET(
     { params }: Context
 ) {
     try {
-        const { id } = params;
+        // 等待 params 解析完成
+        const resolvedParams = await params;
+        const { id } = resolvedParams;
+
         const server = await ServerRepository.getById(id);
 
         if (!server) {
