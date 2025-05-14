@@ -11,12 +11,15 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     make \
+    build-essential \
+    libsqlite3-dev \
     g++ && \
     rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install  --build-from-source
+RUN npm install --build-from-source && \
+    npm rebuild sqlite3 --build-from-source  # 显式
 
 # 2. Builder stage
 FROM base AS builder
@@ -40,6 +43,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
+
+# 禁用 Next.js 遥测数据收集
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 ENV PORT=3000 \
