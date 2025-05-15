@@ -1,13 +1,19 @@
 // ===== 工具函数 =====
 
+
 /**
  * 显示通知消息
  * @param {string} message - 消息内容
  * @param {string} type - 消息类型 (success, danger, warning, info)
  */
-function showNotification(message, type = 'success') {
+window.showNotification = function(message, type = 'success') {
     const notificationArea = document.getElementById('notificationArea');
     const notificationMessage = document.getElementById('notificationMessage');
+
+    if (!notificationArea || !notificationMessage) {
+        console.error("Notification area elements not found.");
+        return;
+    }
 
     notificationArea.classList.remove('alert-success', 'alert-danger', 'alert-warning', 'alert-info');
     notificationArea.classList.add(`alert-${type}`);
@@ -19,14 +25,14 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notificationArea.classList.remove('show');
     }, 3000);
-}
+};
 
 /**
  * HTML转义防止XSS攻击
  * @param {string} str - 需要转义的字符串
  * @returns {string} - 转义后的字符串
  */
-function escapeHtml(str) {
+window.escapeHtml = function(str) {
     if (!str) return '';
 
     return String(str)
@@ -35,21 +41,24 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
-}
+};
 
 /**
  * 复制文本到剪贴板
  * @param {string} text - 需要复制的文本
  */
-async function copyText(text) {
+window.copyText = async function(text) {
     if (!text) return;
 
     text = text.trim();
 
     try {
         await navigator.clipboard.writeText(text);
-        showNotification('复制成功！');
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('复制成功！'); // showNotification is now window.showNotification, accessible globally
+        }
     } catch (err) {
+        console.warn("Clipboard API writeText failed, attempting fallback copy.", err);
         // 降级处理方案
         const textArea = document.createElement('textarea');
         textArea.value = text;
@@ -63,50 +72,38 @@ async function copyText(text) {
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                showNotification('复制成功！');
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('复制成功！'); // showNotification is now window.showNotification
+                }
             } else {
-                throw new Error('复制命令执行失败');
+                throw new Error('Copy command execution failed');
             }
         } catch (err) {
-            showNotification('复制失败：请手动复制', 'danger');
+            console.error("Manual copy fallback failed.", err);
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('复制失败：请手动复制', 'danger'); // showNotification is now window.showNotification
+            }
         }
 
         document.body.removeChild(textArea);
     }
-}
+};
 
-/**
- * 销毁所有工具提示实例
- */
-function destroyAllTooltips() {
-    tooltips.forEach(tooltip => {
-        tooltip.dispose();
-    });
-    tooltips = [];
-}
+// 销毁所有工具提示实例 and initTooltips are moved to ui.js
 
-/**
- * 初始化工具提示
- */
-function initTooltips() {
-    // 先清除旧的工具提示
-    destroyAllTooltips();
-
-    // 创建新的工具提示
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltips = tooltipTriggerList.map(tooltipTriggerEl => {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-}
 
 /**
  * 更新页面标题
  * @param {string} worker - 工作节点名称
  */
-function updatePageTitle(worker) {
-    if (worker) {
+window.updatePageTitle = function(worker) {
+    const serverNameElement = document.getElementById('serverName');
+    if (worker && serverNameElement) {
         const title = `${worker} - Java项目管理`;
-        document.getElementById('serverName').textContent = title;
+        serverNameElement.textContent = title;
         document.title = title;
+    } else if (serverNameElement) {
+        serverNameElement.textContent = 'Java项目管理'; // Reset if worker is empty
+        document.title = '项目管理';
     }
-}
+};

@@ -1,11 +1,53 @@
+// ===== 全局变量 (for tooltips, managed within UI logic) =====
+let tooltips = [];
+
 // ===== UI渲染函数 =====
+
+/**
+ * 销毁所有工具提示实例
+ */
+window.destroyAllTooltips = function() {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        tooltips.forEach(tooltip => {
+            tooltip.dispose();
+        });
+        tooltips = [];
+    }
+};
+
+/**
+ * 初始化工具提示
+ */
+window.initTooltips = function() {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        // First clear old tooltips
+        if (typeof window.destroyAllTooltips === 'function') {
+            window.destroyAllTooltips();
+        } else {
+            console.error("destroyAllTooltips function not available.");
+        }
+
+
+        // Create new tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltips = tooltipTriggerList.map(tooltipTriggerEl => {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    } else {
+        console.error("Bootstrap Tooltip is not available.");
+    }
+};
 
 /**
  * 渲染项目列表
  * @param {Array} projects - 项目列表数据
  */
-function renderProjectList(projects) {
+window.renderProjectList = function(projects) {
     const tbody = document.getElementById('projectList');
+    if (!tbody) {
+        console.error("Project list tbody element not found.");
+        return;
+    }
     tbody.innerHTML = '';
 
     if (!projects || projects.length === 0) {
@@ -24,23 +66,25 @@ function renderProjectList(projects) {
 
     projects.forEach(project => {
         const tr = document.createElement('tr');
+        // Using window.escapeHtml to explicitly call the global function
+        const escapeHtmlFunc = typeof window.escapeHtml === 'function' ? window.escapeHtml : (str) => str; // Fallback
         tr.innerHTML = `
             <td>
-                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.name)}">${escapeHtml(project.name)}</div>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.name)}">${escapeHtmlFunc(project.name)}</div>
             </td>
-            <td>${escapeHtml(project.ports)}</td>
-            <td>${escapeHtml(project.pid)}</td>
+            <td>${escapeHtmlFunc(project.ports)}</td>
+            <td>${escapeHtmlFunc(project.pid)}</td>
             <td>
-                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.catalog)}">${escapeHtml(project.catalog)}</div>
-            </td>
-            <td>
-                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.run)}">${escapeHtml(project.run)}</div>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.catalog)}">${escapeHtmlFunc(project.catalog)}</div>
             </td>
             <td>
-                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.script || '无')}">${escapeHtml(project.script || '无')}</div>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.run)}">${escapeHtmlFunc(project.run)}</div>
             </td>
             <td>
-                <div class="truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.description || '无')}">${escapeHtml(project.description || '无')}</div>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.script || '无')}">${escapeHtmlFunc(project.script || '无')}</div>
+            </td>
+            <td>
+                <div class="truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.description || '无')}">${escapeHtmlFunc(project.description || '无')}</div>
             </td>
             <td>
                 <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
@@ -58,17 +102,17 @@ function renderProjectList(projects) {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         ${project.status === 0 ? `
-                            <li><button class="dropdown-item start-run-btn" data-pid="<span class="math-inline">\{project\.pid\}" data\-background\="false"\>
-<i class\="bi bi\-play\-fill text\-primary"\></i\> 原生启动
-</button\></li\>
-<li\><button class\="dropdown\-item start\-run\-btn" data\-pid\="</span>{project.pid}" data-background="true">
+                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="false">
+                                <i class="bi bi-play-fill text-primary"></i> 原生启动
+                            </button></li>
+                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="true">
                                 <i class="bi bi-play-fill text-success"></i> 原生启动(后台)
                             </button></li>
-                            <li><button class="dropdown-item start-script-btn" data-pid="<span class="math-inline">\{project\.pid\}"\>
-<i class\="bi bi\-play\-circle\-fill text\-success"\></i\> 脚本启动
-</button\></li\>
-<li\><hr class\="dropdown\-divider"\></li\>
-<li\><button class\="dropdown\-item delete\-project\-btn" data\-id\="</span>{project.id}">
+                            <li><button class="dropdown-item start-script-btn" data-pid="${project.pid}">
+                                <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
+                            </button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item delete-project-btn" data-id="${project.id}">
                                 <i class="bi bi-trash"></i> 删除
                             </button></li>
                         ` : `
@@ -78,9 +122,9 @@ function renderProjectList(projects) {
                         `}
                         <li><hr class="dropdown-divider"></li>
                         <li><button class="dropdown-item edit-project-btn"
-                            data-pid="${project.pid}"
-                            data-script="${escapeHtml(project.script || '')}"
-                            data-description="${escapeHtml(project.description || '')}">
+                            data-pid="${escapeHtmlFunc(project.pid || '')}"
+                            data-script="${escapeHtmlFunc(project.script || '')}"
+                            data-description="${escapeHtmlFunc(project.description || '')}">
                             <i class="bi bi-pencil text-info"></i> 编辑
                         </button></li>
                     </ul>
@@ -90,9 +134,13 @@ function renderProjectList(projects) {
         tbody.appendChild(tr);
     });
 
-    // 初始化工具提示
-    initTooltips();
-}
+    // Initialize tooltips after rendering the list
+    if (typeof window.initTooltips === 'function') {
+        window.initTooltips();
+    } else {
+        console.error("initTooltips function not available.");
+    }
+};
 
 /**
  * 显示编辑模态框
@@ -100,12 +148,26 @@ function renderProjectList(projects) {
  * @param {string} script - 脚本命令
  * @param {string} description - 项目描述
  */
-function showEditModal(pid, script, description) {
-    document.getElementById('editPid').value = pid;
-    document.getElementById('editScript').value = script || '';
-    document.getElementById('editDescription').value = description || '';
-    new bootstrap.Modal(document.getElementById('editModal')).show();
-}
+window.showEditModal = function(pid, script, description) {
+    const editPidInput = document.getElementById('editPid');
+    const editScriptTextarea = document.getElementById('editScript');
+    const editDescriptionTextarea = document.getElementById('editDescription');
+    const editModalElement = document.getElementById('editModal');
+
+    if (editPidInput) editPidInput.value = pid;
+    if (editScriptTextarea) editScriptTextarea.value = script || '';
+    if (editDescriptionTextarea) editDescriptionTextarea.value = description || '';
+
+    // Ensure bootstrap is available globally
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal && editModalElement) {
+        new bootstrap.Modal(editModalElement).show();
+    } else {
+        console.error("Bootstrap Modal or edit modal element is not available.");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无法显示编辑模态框：依赖组件未加载。", 'danger');
+        }
+    }
+};
 
 /**
  * 更新输出模态框底部按钮
@@ -113,7 +175,11 @@ function showEditModal(pid, script, description) {
  * @param {number} [pid] - 项目PID（用于直接运行模式）
  * @param {boolean} [isRunning=false] - 是否正在运行
  */
-function updateOutputModalFooter(footer, pid = null, isRunning = false) {
+window.updateOutputModalFooter = function(footer, pid = null, isRunning = false) {
+    if (!footer) {
+        console.error("Output modal footer element not provided.");
+        return;
+    }
     footer.innerHTML = '';
 
     if (isRunning && pid) {
@@ -122,7 +188,15 @@ function updateOutputModalFooter(footer, pid = null, isRunning = false) {
         stopButton.type = 'button';
         stopButton.className = 'btn btn-danger';
         stopButton.textContent = '停止并关闭';
-        stopButton.addEventListener('click', () => stopAndClose(pid));
+        // Make sure stopAndClose is accessible globally
+        if (typeof window.stopAndClose === 'function') {
+            stopButton.addEventListener('click', () => window.stopAndClose(pid));
+        } else {
+            console.error("stopAndClose function is not available for stop button.");
+            // Add a disabled button or fallback
+            stopButton.disabled = true;
+            stopButton.textContent = '停止并关闭 (功能不可用)';
+        }
         footer.appendChild(stopButton);
     } else {
         // 添加普通关闭按钮
@@ -133,4 +207,4 @@ function updateOutputModalFooter(footer, pid = null, isRunning = false) {
         closeButton.setAttribute('data-bs-dismiss', 'modal');
         footer.appendChild(closeButton);
     }
-}
+};

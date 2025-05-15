@@ -1,135 +1,245 @@
 // ===== 全局变量 =====
 let contextMenuTarget = null;
 let autoRegisterInterval = null;
-let tooltips = [];
+// tooltips variable is now managed in ui.js
 
 // ===== 自动注册功能 =====
 
 /**
  * 开始自动注册
  */
-function startAutoRegister() {
+window.startAutoRegister = function() {
     // 清除现有定时器
-    stopAutoRegister();
+    if (typeof window.stopAutoRegister === 'function') {
+        window.stopAutoRegister();
+    } else {
+        console.error("stopAutoRegister function not available.");
+    }
+
 
     // 立即执行一次
-    registerOnline();
+    if (typeof window.registerOnline === 'function') {
+        window.registerOnline();
+    } else {
+        console.error("registerOnline function not available.");
+    }
+
 
     // 设置定时器
-    autoRegisterInterval = setInterval(async () => {
-        try {
-            await registerOnline();
-        } catch (error) {
-            console.error('自动注册失败:', error);
-            stopAutoRegister();
-        }
-    }, AUTO_REGISTER_INTERVAL);
-}
+    // Access AUTO_REGISTER_INTERVAL globally
+    if (typeof AUTO_REGISTER_INTERVAL !== 'undefined') {
+        autoRegisterInterval = setInterval(async () => {
+            try {
+                if (typeof window.registerOnline === 'function') {
+                    await window.registerOnline();
+                } else {
+                    console.error("registerOnline function not available during interval.");
+                }
+            } catch (error) {
+                console.error('Automatic registration failed:', error);
+                if (typeof window.stopAutoRegister === 'function') {
+                    window.stopAutoRegister();
+                } else {
+                    console.error("stopAutoRegister function not available after interval error.");
+                }
+            }
+        }, AUTO_REGISTER_INTERVAL);
+    } else {
+        console.error("AUTO_REGISTER_INTERVAL is not defined globally. Auto-registration will not start.");
+    }
+};
+
 
 /**
  * 停止自动注册
  */
-function stopAutoRegister() {
+window.stopAutoRegister = function() {
     if (autoRegisterInterval) {
         clearInterval(autoRegisterInterval);
         autoRegisterInterval = null;
     }
-}
+};
 
 // ===== 事件监听器 =====
 
 /**
  * 设置所有事件监听器
  */
-function setupEventListeners() {
+window.setupEventListeners = function() {
     // 注册按钮点击事件
-    document.getElementById('registerButton').addEventListener('click', registerOnline);
+    const registerButton = document.getElementById('registerButton');
+    if (registerButton && typeof window.registerOnline === 'function') {
+        registerButton.addEventListener('click', window.registerOnline);
+    } else {
+        console.error("Register button or registerOnline function not available.");
+    }
+
 
     // 保存编辑按钮点击事件
-    document.getElementById('saveEditButton').addEventListener('click', () => {
-        const pid = document.getElementById('editPid').value;
-        const script = document.getElementById('editScript').value;
-        const description = document.getElementById('editDescription').value;
+    const saveEditButton = document.getElementById('saveEditButton');
+    if (saveEditButton) {
+        saveEditButton.addEventListener('click', () => {
+            const pid = document.getElementById('editPid').value;
+            const script = document.getElementById('editScript').value;
+            const description = document.getElementById('editDescription').value;
 
-        if (!script.trim() || !description.trim()) {
-            showNotification('请填写完整信息', 'warning');
-            return;
-        }
+            if (!script.trim() || !description.trim()) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('请填写完整信息', 'warning');
+                } else {
+                    console.error("showNotification function not available.");
+                }
+                return;
+            }
 
-        updateProject(pid, script, description);
-    });
+            if (typeof window.updateProject === 'function') {
+                window.updateProject(pid, script, description);
+            } else {
+                console.error("updateProject function not available.");
+            }
+        });
+    } else {
+        console.error("Save edit button not found.");
+    }
+
 
     // 复制上下文菜单按钮点击事件
-    document.getElementById('copyContextButton').addEventListener('click', () => {
-        if (contextMenuTarget) {
-            copyText(contextMenuTarget.textContent);
-        }
-        hideContextMenu();
-    });
+    const copyContextButton = document.getElementById('copyContextButton');
+    if (copyContextButton) {
+        copyContextButton.addEventListener('click', () => {
+            if (contextMenuTarget) {
+                if (typeof window.copyText === 'function') {
+                    window.copyText(contextMenuTarget.textContent);
+                } else {
+                    console.error("copyText function not available.");
+                }
+            }
+            if (typeof window.hideContextMenu === 'function') {
+                window.hideContextMenu();
+            } else {
+                console.error("hideContextMenu function not available.");
+            }
+        });
+    } else {
+        console.error("Copy context menu button not found.");
+    }
+
 
     // 项目列表中的操作按钮事件委托
-    document.getElementById('projectList').addEventListener('click', (e) => {
-        // 启动项目（原生）
-        if (e.target.closest('.start-run-btn')) {
-            const button = e.target.closest('.start-run-btn');
-            const pid = button.getAttribute('data-pid');
-            const background = button.getAttribute('data-background') === 'true';
-            const title = background ? "原生启动(后台运行)" : "原生启动";
-            handleRunRequest(`${API_ENDPOINTS.START_RUN}${pid}?background=${background}`, title);
-        }
+    const projectList = document.getElementById('projectList');
+    if (projectList) {
+        projectList.addEventListener('click', (e) => {
+            // 启动项目（原生）
+            if (e.target.closest('.start-run-btn')) {
+                const button = e.target.closest('.start-run-btn');
+                const pid = button.getAttribute('data-pid');
+                const background = button.getAttribute('data-background') === 'true';
+                const title = background ? "原生启动(后台运行)" : "原生启动";
+                // 启动项目（脚本）
+                if (typeof window.handleRunRequest === 'function' && typeof API_ENDPOINTS !== 'undefined') {
+                    window.handleRunRequest(`${API_ENDPOINTS.START_RUN}${pid}?background=${background}`, title);
+                } else {
+                    console.error("handleRunRequest or API_ENDPOINTS not available.");
+                }
+            }
 
-        // 启动项目（脚本）
-        if (e.target.closest('.start-script-btn')) {
-            const button = e.target.closest('.start-script-btn');
-            const pid = button.getAttribute('data-pid');
-            handleRunRequest(`${API_ENDPOINTS.START_SCRIPT}${pid}`, "脚本启动");
-        }
+            // 启动项目（脚本）
+            if (e.target.closest('.start-script-btn')) {
+                const button = e.target.closest('.start-script-btn');
+                const pid = button.getAttribute('data-pid');
+                // Access API_ENDPOINTS globally
+                if (typeof window.handleRunRequest === 'function' && typeof API_ENDPOINTS !== 'undefined') {
+                    window.handleRunRequest(`${API_ENDPOINTS.START_SCRIPT}${pid}`, "脚本启动");
+                } else {
+                    console.error("handleRunRequest or API_ENDPOINTS not available.");
+                }
+            }
 
-        // 停止项目
-        if (e.target.closest('.stop-project-btn')) {
-            const button = e.target.closest('.stop-project-btn');
-            const pid = button.getAttribute('data-pid');
-            stopProject(pid);
-        }
+            // 停止项目
+            if (e.target.closest('.stop-project-btn')) {
+                const button = e.target.closest('.stop-project-btn');
+                const pid = button.getAttribute('data-pid');
+                if (typeof window.stopProject === 'function') {
+                    window.stopProject(pid);
+                } else {
+                    console.error("stopProject function not available.");
+                }
+            }
 
-        // 删除项目
-        if (e.target.closest('.delete-project-btn')) {
-            const button = e.target.closest('.delete-project-btn');
-            const id = button.getAttribute('data-id');
-            deleteProject(id);
-        }
+            // 删除项目
+            if (e.target.closest('.delete-project-btn')) {
+                const button = e.target.closest('.delete-project-btn');
+                const id = button.getAttribute('data-id');
+                if (typeof window.deleteProject === 'function') {
+                    window.deleteProject(id);
+                } else {
+                    console.error("deleteProject function not available.");
+                }
+            }
 
-        // 编辑项目
-        if (e.target.closest('.edit-project-btn')) {
-            const button = e.target.closest('.edit-project-btn');
-            const pid = button.getAttribute('data-pid');
-            const script = button.getAttribute('data-script');
-            const description = button.getAttribute('data-description');
-            showEditModal(pid, script, description);
-        }
-    });
+            // 编辑项目
+            if (e.target.closest('.edit-project-btn')) {
+                const button = e.target.closest('.edit-project-btn');
+                const pid = button.getAttribute('data-pid');
+                const script = button.getAttribute('data-script');
+                const description = button.getAttribute('data-description');
+                if (typeof window.showEditModal === 'function') {
+                    window.showEditModal(pid, script, description);
+                } else {
+                    console.error("showEditModal function not available.");
+                }
+            }
+        });
+    } else {
+        console.error("Project list element not found.");
+    }
 
-    // 右键菜单相关事件
-    document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('click', hideContextMenu);
-    document.addEventListener('keydown', handleContextMenuKeyboard);
 
-    // 在页面卸载时清理资源
+    // 上下文菜单相关事件
+    if (typeof window.handleContextMenu === 'function') {
+        document.addEventListener('contextmenu', window.handleContextMenu);
+    } else {
+        console.error("handleContextMenu function not available.");
+    }
+
+    if (typeof window.hideContextMenu === 'function') {
+        document.addEventListener('click', window.hideContextMenu);
+    } else {
+        console.error("hideContextMenu function not available.");
+    }
+
+    if (typeof window.handleContextMenuKeyboard === 'function') {
+        document.addEventListener('keydown', window.handleContextMenuKeyboard);
+    } else {
+        console.error("handleContextMenuKeyboard function not available.");
+    }
+
+
+    // 清理页面卸载时的资源
     window.addEventListener('beforeunload', () => {
-        stopAutoRegister();
-        destroyAllTooltips();
+        if (typeof window.stopAutoRegister === 'function') {
+            window.stopAutoRegister();
+        } else {
+            console.error("stopAutoRegister function not available during unload.");
+        }
+        // Assuming destroyAllTooltips is in ui.js and globally accessible or called correctly
+        if (typeof window.destroyAllTooltips === 'function') {
+            window.destroyAllTooltips();
+        } else {
+            console.error("destroyAllTooltips function not available during unload.");
+        }
     });
-}
+};
 
 /**
  * 处理右键菜单事件
  * @param {Event} e - 事件对象
  */
-function handleContextMenu(e) {
+window.handleContextMenu = function(e) {
     if (e.target.classList.contains('code-block')) {
         e.preventDefault();
         const menu = document.getElementById('contextMenu');
-        contextMenuTarget = e.target;
+        contextMenuTarget = e.target; // contextMenuTarget is managed within app.js
 
         // 设置菜单位置，确保不会超出窗口边界
         const x = e.pageX;
@@ -149,33 +259,45 @@ function handleContextMenu(e) {
             firstItem.focus();
         }
     }
-}
+};
 
 /**
  * 隐藏右键菜单
  */
-function hideContextMenu() {
+window.hideContextMenu = function() {
     document.getElementById('contextMenu').style.display = 'none';
-    contextMenuTarget = null;
-}
+    contextMenuTarget = null; // contextMenuTarget is managed within app.js
+};
 
 /**
  * 处理右键菜单键盘事件
  * @param {KeyboardEvent} e - 键盘事件对象
  */
-function handleContextMenuKeyboard(e) {
+window.handleContextMenuKeyboard = function(e) {
     const menu = document.getElementById('contextMenu');
     if (menu.style.display === 'block') {
         if (e.key === 'Escape') {
-            hideContextMenu();
-        } else if (e.key === 'Enter') {
-            if (contextMenuTarget) {
-                copyText(contextMenuTarget.textContent);
+            if (typeof window.hideContextMenu === 'function') {
+                window.hideContextMenu();
+            } else {
+                console.error("hideContextMenu function not available during keyboard event.");
             }
-            hideContextMenu();
+        } else if (e.key === 'Enter') {
+            if (contextMenuTarget) { // contextMenuTarget is managed within app.js
+                if (typeof window.copyText === 'function') {
+                    window.copyText(contextMenuTarget.textContent);
+                } else {
+                    console.error("copyText function not available during keyboard event.");
+                }
+            }
+            if (typeof window.hideContextMenu === 'function') {
+                window.hideContextMenu();
+            } else {
+                console.error("hideContextMenu function not available during keyboard event.");
+            }
         }
     }
-}
+};
 
 
 // ===== 初始化 =====
@@ -185,16 +307,36 @@ function handleContextMenuKeyboard(e) {
  */
 async function initApp() {
     // 首次加载项目列表
-    await fetchProjects();
+    if (typeof window.fetchProjects === 'function') {
+        await window.fetchProjects();
+    } else {
+        console.error("fetchProjects function not available. Cannot initialize app.");
+        return; // Stop initialization if critical function is missing
+    }
 
     // 设置事件监听器
-    setupEventListeners();
+    if (typeof window.setupEventListeners === 'function') {
+        window.setupEventListeners();
+    } else {
+        console.error("setupEventListeners function not available.");
+    }
+
 
     // 启动自动注册
-    startAutoRegister();
+    if (typeof window.startAutoRegister === 'function') {
+        window.startAutoRegister();
+    } else {
+        console.error("startAutoRegister function not available.");
+    }
+
 
     // 隐藏通知区域
-    document.getElementById('notificationArea').classList.remove('show');
+    const notificationArea = document.getElementById('notificationArea');
+    if (notificationArea) {
+        notificationArea.classList.remove('show');
+    } else {
+        console.warn("Notification area element not found.");
+    }
 }
 
 // 页面加载完成后初始化应用
