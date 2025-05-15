@@ -175,10 +175,11 @@ func (s *SJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) 
 }
 
 // UpdateProject 更新项目基础信息
-func (s *SJpid) UpdateInfo(ctx context.Context, pid int, script, description string) error {
+func (s *SJpid) UpdateInfo(ctx context.Context, pid int, script, catalog, description string) error {
 	_, err := dao.Jpid.Ctx(ctx).
 		Data(g.Map{
 			"script":      script,
+			"catalog":     catalog,
 			"description": description,
 		}).
 		Where("pid", pid).

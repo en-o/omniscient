@@ -25,10 +25,10 @@ window.AUTO_REGISTER_INTERVAL = AUTO_REGISTER_INTERVAL;
  * @param {Object} [body] - 请求体数据
  * @returns {Promise<Object>} - 响应数据
  */
-window.apiRequest = async function(url, method = 'GET', body = null) {
+window.apiRequest = async function (url, method = 'GET', body = null) {
     const options = {
         method,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {'Content-Type': 'application/json'}
     };
 
     if (body && (method === 'POST' || method === 'PUT')) {
@@ -48,7 +48,7 @@ window.apiRequest = async function(url, method = 'GET', body = null) {
 /**
  * 获取项目列表
  */
-window.fetchProjects = async function() {
+window.fetchProjects = async function () {
     try {
         const data = await window.apiRequest(window.API_ENDPOINTS.LIST); // Using window.apiRequest and window.API_ENDPOINTS
         const projectList = data.data.list || [];
@@ -84,7 +84,7 @@ window.fetchProjects = async function() {
 /**
  * 注册在线项目
  */
-window.registerOnline = async function() {
+window.registerOnline = async function () {
     const registerButton = document.getElementById('registerButton');
     if (!registerButton) {
         console.error("Register button not found.");
@@ -126,14 +126,15 @@ window.registerOnline = async function() {
  * 更新项目
  * @param {number} pid - 项目PID
  * @param {string} script - 脚本命令
+ * @param { string } catalog - jar目录， 设置也会被更新，用于临时设置后自动更新
  * @param {string} description - 项目描述
  */
-window.updateProject = async function(pid, script, description) {
+window.updateProject = async function (pid, script, catalog, description) {
     try {
         const result = await window.apiRequest( // Using window.apiRequest
             `${window.API_ENDPOINTS.UPDATE}${pid}`, // Using window.API_ENDPOINTS
             'POST',
-            { script, description }
+            {script, catalog, description}
         );
 
         if (typeof window.showNotification === 'function') {
@@ -167,9 +168,9 @@ window.updateProject = async function(pid, script, description) {
  * 删除项目
  * @param {number} id - 项目ID
  */
-window.deleteProject = async function(id) {
+window.deleteProject = async function (id) {
     //从存储的数据中查找项目详细信息
-     //假设projectsData全局可用
+    //假设projectsData全局可用
     if (!window.projectsData || window.projectsData.length === 0) {
         console.error("Project data is not loaded. Cannot confirm deletion.");
         if (typeof window.showNotification === 'function') {
@@ -234,7 +235,7 @@ window.deleteProject = async function(id) {
     // Add a listener to clean up when the modal is hidden (e.g., by clicking cancel or backdrop)
     deleteConfirmModalElement.addEventListener('hidden.bs.modal', () => {
         confirmDeleteButton.removeEventListener('click', confirmDeleteHandler);
-    }, { once: true }); // Use { once: true } to automatically remove the listener after it's triggered once
+    }, {once: true}); // Use { once: true } to automatically remove the listener after it's triggered once
 
     // Show the modal
     deleteConfirmModal.show();
@@ -268,7 +269,7 @@ async function executeDelete(id) {
  * 停止项目
  * @param {number} pid - 项目PID
  */
-window.stopProject = async function(pid) {
+window.stopProject = async function (pid) {
     try {
         const result = await window.apiRequest(`${window.API_ENDPOINTS.STOP}${pid}`, 'POST'); // Using window.apiRequest and window.API_ENDPOINTS
         if (typeof window.showNotification === 'function') {
@@ -294,7 +295,7 @@ window.stopProject = async function(pid) {
  * 停止项目并关闭输出窗口
  * @param {number} pid - 项目PID
  */
-window.stopAndClose = async function(pid) {
+window.stopAndClose = async function (pid) {
     if (!confirm('确定要停止运行吗？')) {
         return;
     }
@@ -334,7 +335,7 @@ window.stopAndClose = async function(pid) {
  * @param {string} url - API地址
  * @param {string} title - 模态框标题
  */
-window.handleRunRequest = function(url, title = "运行输出") {
+window.handleRunRequest = function (url, title = "运行输出") {
     // 判断是否是直接运行模式（非后台运行）
     const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
 

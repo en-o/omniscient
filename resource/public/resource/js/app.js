@@ -12,7 +12,7 @@ window.projectsData = [];
 /**
  * 开始自动注册
  */
-window.startAutoRegister = function() {
+window.startAutoRegister = function () {
     // 清除现有定时器
     if (typeof window.stopAutoRegister === 'function') {
         window.stopAutoRegister();
@@ -57,7 +57,7 @@ window.startAutoRegister = function() {
 /**
  * 停止自动注册
  */
-window.stopAutoRegister = function() {
+window.stopAutoRegister = function () {
     if (autoRegisterInterval) {
         clearInterval(autoRegisterInterval);
         autoRegisterInterval = null;
@@ -69,7 +69,7 @@ window.stopAutoRegister = function() {
 /**
  * 设置所有事件监听器
  */
-window.setupEventListeners = function() {
+window.setupEventListeners = function () {
     // 注册按钮点击事件
     const registerButton = document.getElementById('registerButton');
     if (registerButton && typeof window.registerOnline === 'function') {
@@ -186,9 +186,10 @@ window.setupEventListeners = function() {
                 const button = e.target.closest('.edit-project-btn');
                 const pid = button.getAttribute('data-pid');
                 const script = button.getAttribute('data-script');
+                const catalog = button.getAttribute('data-catalog');
                 const description = button.getAttribute('data-description');
                 if (typeof window.showEditModal === 'function') {
-                    window.showEditModal(pid, script, description);
+                    window.showEditModal(pid, script, catalog, description);
                 } else {
                     console.error("showEditModal function not available.");
                 }
@@ -239,7 +240,7 @@ window.setupEventListeners = function() {
  * 处理右键菜单事件
  * @param {Event} e - 事件对象
  */
-window.handleContextMenu = function(e) {
+window.handleContextMenu = function (e) {
     if (e.target.classList.contains('code-block')) {
         e.preventDefault();
         const menu = document.getElementById('contextMenu');
@@ -268,7 +269,7 @@ window.handleContextMenu = function(e) {
 /**
  * 隐藏右键菜单
  */
-window.hideContextMenu = function() {
+window.hideContextMenu = function () {
     document.getElementById('contextMenu').style.display = 'none';
     contextMenuTarget = null; // contextMenuTarget is managed within app.js
 };
@@ -277,7 +278,7 @@ window.hideContextMenu = function() {
  * 处理右键菜单键盘事件
  * @param {KeyboardEvent} e - 键盘事件对象
  */
-window.handleContextMenuKeyboard = function(e) {
+window.handleContextMenuKeyboard = function (e) {
     const menu = document.getElementById('contextMenu');
     if (menu.style.display === 'block') {
         if (e.key === 'Escape') {

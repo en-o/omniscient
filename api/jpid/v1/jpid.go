@@ -66,6 +66,7 @@ type UpdateProjectReq struct {
 	g.Meta      `path:"/jpid/update/:pid" tags:"Java" method:"post" summary:"更新项目信息"`
 	Pid         int    `v:"required|min:1"      json:"pid"         dc:"进程ID"`
 	Script      string `v:"required"            json:"script"         dc:"脚本命令"`
+	Catalog     string `v:"required"            json:"catalog"         dc:"运行目录[临时设置后面会自动更新]"`
 	Description string `v:"required"            json:"description" dc:"项目描述"`
 }
 

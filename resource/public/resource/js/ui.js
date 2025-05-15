@@ -124,6 +124,7 @@ window.renderProjectList = function(projects) {
                         <li><button class="dropdown-item edit-project-btn"
                             data-pid="${escapeHtmlFunc(project.pid || '')}"
                             data-script="${escapeHtmlFunc(project.script || '')}"
+                            data-catalog="${escapeHtmlFunc(project.catalog || '')}"
                             data-description="${escapeHtmlFunc(project.description || '')}">
                             <i class="bi bi-pencil text-info"></i> 编辑
                         </button></li>
