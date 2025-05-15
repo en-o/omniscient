@@ -52,6 +52,10 @@ body.modal-open .table-responsive {
     transform: none !important; /* 确保绝对定位 */
 }
 
+.dropdown-menu dropdown-menu-end show  {
+    inset: 33px -48px auto auto
+}
+
 /* 确保dropdown-toggle在展开时有更高的z-index */
 .dropdown-toggle.show {
     z-index: 1075 !important;
