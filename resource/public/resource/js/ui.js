@@ -149,14 +149,16 @@ window.renderProjectList = function(projects) {
  * @param {string} script - 脚本命令
  * @param {string} description - 项目描述
  */
-window.showEditModal = function(pid, script, description) {
+window.showEditModal = function(pid, script, catalog, description) {
     const editPidInput = document.getElementById('editPid');
     const editScriptTextarea = document.getElementById('editScript');
+    const editCatalogTextarea = document.getElementById('editCatalog');
     const editDescriptionTextarea = document.getElementById('editDescription');
     const editModalElement = document.getElementById('editModal');
 
     if (editPidInput) editPidInput.value = pid;
     if (editScriptTextarea) editScriptTextarea.value = script || '';
+    if (editCatalogTextarea) editCatalogTextarea.value = catalog || '';
     if (editDescriptionTextarea) editDescriptionTextarea.value = description || '';
 
     // Ensure bootstrap is available globally

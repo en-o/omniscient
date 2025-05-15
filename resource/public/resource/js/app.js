@@ -85,6 +85,7 @@ window.setupEventListeners = function () {
         saveEditButton.addEventListener('click', () => {
             const pid = document.getElementById('editPid').value;
             const script = document.getElementById('editScript').value;
+            const catalog = document.getElementById('editCatalog').value;
             const description = document.getElementById('editDescription').value;
 
             if (!script.trim() || !description.trim()) {
@@ -97,7 +98,7 @@ window.setupEventListeners = function () {
             }
 
             if (typeof window.updateProject === 'function') {
-                window.updateProject(pid, script, description);
+                window.updateProject(pid, script, catalog, description);
             } else {
                 console.error("updateProject function not available.");
             }
