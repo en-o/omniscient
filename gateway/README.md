@@ -8,11 +8,10 @@ ps: 用的浏览器缓存，缓存被删就没了更换浏览器也没了
 ## 运行数据库脚本
 ```shell
 cd gateway
-# db:setupDocker是用来dockerfile用的，其他地方不要使用
+# db:docker是用来dockerfile用的，其他地方不要使用
 node scripts/setup-db.js 
-// or
+# or
 npm run db:setup
-
 
 ```
 

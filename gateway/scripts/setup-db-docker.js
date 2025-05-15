@@ -4,7 +4,7 @@ const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 
 // 确保数据目录存在
-const dataDir = path.join(__dirname, '..', 'data-temp');
+const dataDir = path.join(__dirname, '..', 'datatemp');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -24,13 +24,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // 创建服务器表
 db.serialize(() => {
     db.run(`
-    CREATE TABLE IF NOT EXISTS servers (
-      id TEXT PRIMARY KEY,
-      url TEXT NOT NULL,
-      description TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `, (err) => {
+        CREATE TABLE IF NOT EXISTS servers (
+                                               id TEXT PRIMARY KEY,
+                                               url TEXT NOT NULL,
+                                               description TEXT NOT NULL,
+                                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `, (err) => {
         if (err) {
             console.error('创建服务器表失败:', err.message);
         } else {

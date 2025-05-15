@@ -79,6 +79,10 @@ npm run build
 > 2. 我这个项目不能用aline镜像，slim也不行，sqlite安装会出问题 （😔
 > 3. 目前镜像有点大，1.6g 
 ```bash
+# build的时候注意 package-lock.json，我换个环境重新生成就出问题了[如果重新生成，请把node_modules先删除]
+# --no-cache 禁止缓存
+# docker builder prune # 清理缓存
+#docker build --no-cache  -t  tannnn/omniscient-gateway:0.0.1 .
 docker build  -t  tannnn/omniscient-gateway:0.0.1 .
 docker run -p 3000:3000 tannnn/omniscient-gateway:0.0.1
 ```

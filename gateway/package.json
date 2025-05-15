@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:setup": "node scripts/setup-db.js",
-    "db:setupDocker": "node scripts/setup-db-docker.js"
+    "db:docker": "node scripts/setup-db-docker.js"
   },
   "dependencies": {
     "next": "15.3.2",
