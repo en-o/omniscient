@@ -77,6 +77,7 @@ npm run build
 ## Building for docker
 > 1. https://github.com/vercel/next.js/tree/canary/examples/with-docker-multi-env
 > 2. 我这个项目不能用aline镜像，slim也不行，sqlite安装会出问题 （😔
+> 3. 目前镜像有点大，1.6g 
 ```bash
 docker build  -t  tannnn/omniscient-gateway:0.0.1 .
 docker run -p 3000:3000 tannnn/omniscient-gateway:0.0.1
