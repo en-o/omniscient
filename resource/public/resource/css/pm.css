@@ -1,119 +1,70 @@
-/* 全局样式 */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 20px 0;
+/* 修复下拉菜单被遮挡问题 */
+
+/* 处理table-responsive容器的样式 */
+.table-responsive {
+    overflow: visible !important; /* 防止溢出内容被裁剪 */
+    z-index: auto !important; /* 确保不创建新的堆叠上下文 */
 }
 
-/* 容器样式 */
-.container {
-    max-width: 1280px;
-    margin: 0 auto;
+/* 表格容器在模态框打开时的处理 */
+body.modal-open .table-responsive {
+    overflow: visible !important;
+    position: static !important;
 }
 
-/* 可截断的文本样式 */
-.truncate {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-
-/* 代码块样式 */
-.code-block {
-    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-    cursor: pointer;
-}
-
-.code-block:hover {
-    text-decoration: underline;
-    color: #0d6efd;
-}
-
-/* 输出内容样式 */
-.output-content {
-    height: 400px;
-    overflow-y: auto;
-    background-color: #212529;
-    color: #f8f9fa;
-    padding: 10px;
-    border-radius: 4px;
-    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-/* 上下文菜单样式 */
-.context-menu {
-    position: absolute;
-    z-index: 1050;
-    background-color: #fff;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 0.25rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    padding: 0.5rem 0;
-    min-width: 10rem;
-}
-
-.context-menu-item {
-    display: block;
-    width: 100%;
-    padding: 0.25rem 1.5rem;
-    clear: both;
-    font-weight: 400;
-    color: #212529;
-    text-align: inherit;
-    white-space: nowrap;
-    background-color: transparent;
-    border: 0;
-    text-align: left;
-}
-
-.context-menu-item:hover,
-.context-menu-item:focus {
-    color: #16181b;
-    text-decoration: none;
-    background-color: #f8f9fa;
-}
-
-/* 响应式表格样式调整 */
-@media (max-width: 768px) {
-    .table th, .table td {
-        font-size: 0.9rem;
-    }
-
-    .truncate, .code-block {
-        max-width: 100px;
-    }
-}
-
-@media (max-width: 576px) {
-    .table th, .table td {
-        font-size: 0.8rem;
-        padding: 0.5rem;
-    }
-
-    .truncate, .code-block {
-        max-width: 80px;
-    }
-}
-
-
-/* 下拉菜单层级调整 */
+/* 提高下拉菜单的z-index值 */
 .dropdown-menu {
-    z-index: 1060; /* 设置比模态框更高的层级 */
+    z-index: 1080 !important; /* 显著提高z-index值并使用!important确保优先级 */
 }
 
-/* 确保下拉菜单按钮组不被遮挡 */
+/* 确保按钮组在激活状态下也有更高的z-index */
 .btn-group {
-    position: relative;
-    z-index: 1060;
+    position: relative !important;
+    z-index: 1070 !important;
 }
 
-/* 下拉菜单打开时保持在顶层 */
+/* 下拉菜单打开时的特殊处理 */
 .dropdown-menu.show {
-    z-index: 1060;
+    z-index: 1080 !important; /* 使用!important确保覆盖任何其他样式 */
+    position: absolute !important; /* 确保绝对定位 */
+    transform: none !important; /* 防止Bootstrap的transform属性影响z-index堆叠 */
+}
+
+/* 确保dropdown-toggle在展开时有更高的z-index */
+.dropdown-toggle.show {
+    z-index: 1075 !important;
+    position: relative !important;
+}
+
+/* 调整模态框背景的z-index */
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+
+/* 调整模态框本身的z-index */
+.modal {
+    z-index: 1055 !important;
+}
+
+/* 针对表格内操作列的特殊处理 */
+.table .btn-group {
+    position: relative !important;
+    z-index: 1070 !important;
+}
+
+/* 表格内的单元格特殊处理 */
+.table td:last-child {
+    position: relative !important;
+    z-index: 10 !important; /* 设置相对较低的值，但确保在table内部有较高的值 */
+}
+
+/* 在输出模态框显示时确保下拉菜单还能正常显示 */
+body.modal-open .dropdown-menu.show {
+    z-index: 1090 !important;
+}
+
+/* 处理可能影响下拉菜单的其他容器 */
+.container, .row, .col, .table {
+    overflow: visible !important;
+    transform: none !important;
 }
