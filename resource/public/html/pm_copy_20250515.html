@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>项目管理</title>
+    <link rel="shortcut icon" href="/resource/image/favicon.ico" type="image/x-icon">
+    <link href="/resource/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/resource/css/bootstrap-icons.css" rel="stylesheet">
+    <link href="/resource/css/pm.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <span class="server-name" id="serverName">Java项目管理</span>
+        </h2>
+        <button type="button" class="btn btn-primary" id="registerButton" aria-label="注册在线项目">
+            <i class="bi bi-plus-circle" aria-hidden="true"></i> 注册在线项目
+        </button>
+    </div>
+
+    <!-- 状态通知区域 -->
+    <div id="notificationArea" class="alert alert-dismissible fade" role="alert">
+        <span id="notificationMessage"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>端口</th>
+                <th>PID</th>
+                <th>目录</th>
+                <th>启动命令</th>
+                <th>脚本命令</th>
+                <th>项目描述</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="projectList"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 复制上下文菜单 -->
+<div id="contextMenu" class="context-menu" style="display: none;" role="menu">
+    <button type="button" class="context-menu-item" id="copyContextButton" role="menuitem" tabindex="0">
+        复制内容
+    </button>
+</div>
+
+<!-- 编辑模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">编辑项目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editPid">
+                    <div class="mb-3">
+                        <label for="editScript" class="form-label">脚本命令</label>
+                        <textarea class="form-control" id="editScript" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">项目描述</label>
+                        <textarea class="form-control" id="editDescription" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveEditButton">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 输出显示模态框 -->
+<div class="modal fade" id="outputModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+     aria-labelledby="outputModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="outputModalLabel">运行输出</h5>
+            </div>
+            <div class="modal-body">
+                <pre id="outputContent" class="output-content"></pre>
+                <div class="text-center" id="outputLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">运行中...</span>
+                    </div>
+                    <p class="mt-2">正在执行，请稍候...</p>
+                </div>
+            </div>
+            <div class="modal-footer" id="outputModalFooter">
+                <!-- 动态添加按钮 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/resource/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ===== 常量定义 =====
+    const API_ENDPOINTS = {
+        LIST: '/jpid',
+        REGISTER: '/jpid/auto/register',
+        STOP: '/jpid/stop/',
+        START_RUN: '/jpid/start/run/',
+        START_SCRIPT: '/jpid/start/script/',
+        DELETE: '/jpid/delete/',
+        UPDATE: '/jpid/update/'
+    };
+
+    const AUTO_REGISTER_INTERVAL = 60000; // 60秒
+
+    // ===== 全局变量 =====
+    let contextMenuTarget = null;
+    let autoRegisterInterval = null;
+    let tooltips = [];
+
+    // ===== 工具函数 =====
+
+    /**
+     * 显示通知消息
+     * @param {string} message - 消息内容
+     * @param {string} type - 消息类型 (success, danger, warning, info)
+     */
+    function showNotification(message, type = 'success') {
+        const notificationArea = document.getElementById('notificationArea');
+        const notificationMessage = document.getElementById('notificationMessage');
+
+        notificationArea.classList.remove('alert-success', 'alert-danger', 'alert-warning', 'alert-info');
+        notificationArea.classList.add(`alert-${type}`);
+        notificationArea.classList.add('show');
+
+        notificationMessage.textContent = message;
+
+        // 自动隐藏通知（3秒后）
+        setTimeout(() => {
+            notificationArea.classList.remove('show');
+        }, 3000);
+    }
+
+    /**
+     * HTML转义防止XSS攻击
+     * @param {string} str - 需要转义的字符串
+     * @returns {string} - 转义后的字符串
+     */
+    function escapeHtml(str) {
+        if (!str) return '';
+
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * 复制文本到剪贴板
+     * @param {string} text - 需要复制的文本
+     */
+    async function copyText(text) {
+        if (!text) return;
+
+        text = text.trim();
+
+        try {
+            await navigator.clipboard.writeText(text);
+            showNotification('复制成功！');
+        } catch (err) {
+            // 降级处理方案
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification('复制成功！');
+                } else {
+                    throw new Error('复制命令执行失败');
+                }
+            } catch (err) {
+                showNotification('复制失败：请手动复制', 'danger');
+            }
+
+            document.body.removeChild(textArea);
+        }
+    }
+
+    /**
+     * 销毁所有工具提示实例
+     */
+    function destroyAllTooltips() {
+        tooltips.forEach(tooltip => {
+            tooltip.dispose();
+        });
+        tooltips = [];
+    }
+
+    /**
+     * 初始化工具提示
+     */
+    function initTooltips() {
+        // 先清除旧的工具提示
+        destroyAllTooltips();
+
+        // 创建新的工具提示
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltips = tooltipTriggerList.map(tooltipTriggerEl => {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+
+    /**
+     * 更新页面标题
+     * @param {string} worker - 工作节点名称
+     */
+    function updatePageTitle(worker) {
+        if (worker) {
+            const title = `${worker} - Java项目管理`;
+            document.getElementById('serverName').textContent = title;
+            document.title = title;
+        }
+    }
+
+    // ===== API调用函数 =====
+
+    /**
+     * 执行API请求
+     * @param {string} url - API地址
+     * @param {string} method - 请求方法
+     * @param {Object} [body] - 请求体数据
+     * @returns {Promise<Object>} - 响应数据
+     */
+    async function apiRequest(url, method = 'GET', body = null) {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        if (body && (method === 'POST' || method === 'PUT')) {
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `请求失败 (${response.status})`);
+        }
+
+        return data;
+    }
+
+    /**
+     * 获取项目列表
+     */
+    async function fetchProjects() {
+        try {
+            const data = await apiRequest(API_ENDPOINTS.LIST);
+            renderProjectList(data.data.list || []);
+
+            // 获取第一个项目的worker信息来更新标题
+            if (data.data.list && data.data.list.length > 0) {
+                const firstProject = data.data.list[0];
+                if (firstProject.worker) {
+                    updatePageTitle(firstProject.worker);
+                }
+            }
+        } catch (error) {
+            showNotification(`获取项目列表失败：${error.message}`, 'danger');
+        }
+    }
+
+    /**
+     * 注册在线项目
+     */
+    async function registerOnline() {
+        const registerButton = document.getElementById('registerButton');
+
+        try {
+            // 禁用按钮防止重复点击
+            registerButton.disabled = true;
+            registerButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 注册中...';
+
+            const result = await apiRequest(API_ENDPOINTS.REGISTER);
+            showNotification(result.data.message);
+            await fetchProjects();
+        } catch (error) {
+            showNotification(`注册失败：${error.message}`, 'danger');
+        } finally {
+            // 恢复按钮状态
+            registerButton.disabled = false;
+            registerButton.innerHTML = '<i class="bi bi-plus-circle" aria-hidden="true"></i> 注册在线项目';
+        }
+    }
+
+    /**
+     * 更新项目
+     * @param {number} pid - 项目PID
+     * @param {string} script - 脚本命令
+     * @param {string} description - 项目描述
+     */
+    async function updateProject(pid, script, description) {
+        try {
+            const result = await apiRequest(
+                `${API_ENDPOINTS.UPDATE}${pid}`,
+                'POST',
+                { script, description }
+            );
+
+            showNotification(result.message);
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            await fetchProjects();
+        } catch (error) {
+            showNotification(`更新失败：${error.message}`, 'danger');
+        }
+    }
+
+    /**
+     * 删除项目
+     * @param {number} id - 项目ID
+     */
+    async function deleteProject(id) {
+        if (!confirm('确定要删除该项目吗？此操作不可恢复。')) {
+            return;
+        }
+
+        try {
+            const result = await apiRequest(`${API_ENDPOINTS.DELETE}${id}`, 'DELETE');
+            showNotification(result.message);
+            await fetchProjects();
+        } catch (error) {
+            showNotification(`删除失败：${error.message}`, 'danger');
+        }
+    }
+
+    /**
+     * 停止项目
+     * @param {number} pid - 项目PID
+     */
+    async function stopProject(pid) {
+        try {
+            const result = await apiRequest(`${API_ENDPOINTS.STOP}${pid}`, 'POST');
+            showNotification(result.message);
+            await fetchProjects();
+        } catch (error) {
+            showNotification(`停止失败：${error.message}`, 'danger');
+        }
+    }
+
+    /**
+     * 停止项目并关闭输出窗口
+     * @param {number} pid - 项目PID
+     */
+    async function stopAndClose(pid) {
+        if (!confirm('确定要停止运行吗？')) {
+            return;
+        }
+
+        try {
+            await apiRequest(`${API_ENDPOINTS.STOP}${pid}`, 'POST');
+
+            // 等待进程终止
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // 关闭模态框
+            bootstrap.Modal.getInstance(document.getElementById('outputModal')).hide();
+
+            // 刷新项目列表
+            await fetchProjects();
+        } catch (error) {
+            showNotification(`停止进程失败：${error.message}`, 'danger');
+        }
+    }
+
+    // ===== UI渲染函数 =====
+
+    /**
+     * 渲染项目列表
+     * @param {Array} projects - 项目列表数据
+     */
+    function renderProjectList(projects) {
+        const tbody = document.getElementById('projectList');
+        tbody.innerHTML = '';
+
+        if (!projects || projects.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td colspan="9" class="text-center text-muted py-4">
+                <div>
+                    <i class="bi bi-inbox fs-4"></i>
+                    <p class="mt-2">暂无项目数据</p>
+                </div>
+            </td>
+        `;
+            tbody.appendChild(tr);
+            return;
+        }
+
+        projects.forEach(project => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.name)}">${escapeHtml(project.name)}</div>
+            </td>
+            <td>${escapeHtml(project.ports)}</td>
+            <td>${escapeHtml(project.pid)}</td>
+            <td>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.catalog)}">${escapeHtml(project.catalog)}</div>
+            </td>
+            <td>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.run)}">${escapeHtml(project.run)}</div>
+            </td>
+            <td>
+                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.script || '无')}">${escapeHtml(project.script || '无')}</div>
+            </td>
+            <td>
+                <div class="truncate" data-bs-toggle="tooltip" title="${escapeHtml(project.description || '无')}">${escapeHtml(project.description || '无')}</div>
+            </td>
+            <td>
+                <span class="badge ${project.status === 1 ? 'bg-success' : 'bg-danger'}">
+                    ${project.status === 1 ? '运行中' : '已停止'}
+                </span>
+            </td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="outside"
+                            aria-expanded="false">
+                        操作
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        ${project.status === 0 ? `
+                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="false">
+                                <i class="bi bi-play-fill text-primary"></i> 原生启动
+                            </button></li>
+                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="true">
+                                <i class="bi bi-play-fill text-success"></i> 原生启动(后台)
+                            </button></li>
+                            <li><button class="dropdown-item start-script-btn" data-pid="${project.pid}">
+                                <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
+                            </button></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item delete-project-btn" data-id="${project.id}">
+                                <i class="bi bi-trash"></i> 删除
+                            </button></li>
+                        ` : `
+                            <li><button class="dropdown-item stop-project-btn" data-pid="${project.pid}">
+                                <i class="bi bi-stop-fill text-danger"></i> 停止
+                            </button></li>
+                        `}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item edit-project-btn"
+                            data-pid="${project.pid}"
+                            data-script="${escapeHtml(project.script || '')}"
+                            data-description="${escapeHtml(project.description || '')}">
+                            <i class="bi bi-pencil text-info"></i> 编辑
+                        </button></li>
+                    </ul>
+                </div>
+            </td>
+        `;
+            tbody.appendChild(tr);
+        });
+
+        // 初始化工具提示
+        initTooltips();
+    }
+
+    /**
+     * 显示编辑模态框
+     * @param {number} pid - 项目PID
+     * @param {string} script - 脚本命令
+     * @param {string} description - 项目描述
+     */
+    function showEditModal(pid, script, description) {
+        document.getElementById('editPid').value = pid;
+        document.getElementById('editScript').value = script || '';
+        document.getElementById('editDescription').value = description || '';
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    /**
+     * 处理运行请求并显示输出
+     * @param {string} url - API地址
+     * @param {string} title - 模态框标题
+     */
+    function handleRunRequest(url, title = "运行输出") {
+        // 判断是否是直接运行模式（非后台运行）
+        const isDirectRun = url.includes('/start/run') && !url.includes('background=true');
+
+        // 显示输出模态框
+        const outputModal = new bootstrap.Modal(document.getElementById('outputModal'));
+        document.getElementById('outputModalLabel').textContent = title;
+
+        // 清空并初始化输出内容和底部按钮
+        const outputContent = document.getElementById('outputContent');
+        const outputLoading = document.getElementById('outputLoading');
+        const outputModalFooter = document.getElementById('outputModalFooter');
+
+        outputContent.innerHTML = '';
+        outputLoading.style.display = 'block';
+        outputModalFooter.innerHTML = '';
+
+        outputModal.show();
+
+        // 创建一个变量存储新的PID
+        let newPid = null;
+
+        // 创建SSE连接
+        const eventSource = new EventSource(url);
+
+        // 处理输出消息
+        eventSource.addEventListener('output', (e) => {
+            const line = e.data;
+
+            // 处理带颜色的终端输出
+            if (line.includes('\x1b[')) {
+                const coloredLine = line
+                    .replace(/\x1b\[1;31m/g, '<span style="color: #ff5555; font-weight: bold;">') // 红色
+                    .replace(/\x1b\[1;32m/g, '<span style="color: #50fa7b; font-weight: bold;">') // 绿色
+                    .replace(/\x1b\[1;33m/g, '<span style="color: #f1fa8c; font-weight: bold;">') // 黄色
+                    .replace(/\x1b\[1;34m/g, '<span style="color: #bd93f9; font-weight: bold;">') // 蓝色
+                    .replace(/\x1b\[0m/g, '</span>');
+
+                outputContent.innerHTML += coloredLine + '\n';
+
+                // 检查并提取新的PID
+                const pidMatch = line.match(/==> 获取到Java进程 PID: (\d+)/);
+                if (pidMatch) {
+                    newPid = parseInt(pidMatch[1]);
+
+                    // 如果是直接运行模式，更新关闭按钮的PID
+                    if (isDirectRun) {
+                        updateOutputModalFooter(outputModalFooter, newPid, true);
+                    }
+                }
+            } else {
+                outputContent.innerHTML += escapeHtml(line) + '\n';
+            }
+
+            // 自动滚动到底部
+            outputContent.scrollTop = outputContent.scrollHeight;
+        });
+
+        // 处理错误
+        eventSource.onerror = () => {
+            eventSource.close();
+
+            // 如果已经收到了complete事件，就不显示错误
+            if (!outputContent.innerHTML.includes('执行完成')) {
+                outputContent.innerHTML += '<span style="color: #ff5555; font-weight: bold;">错误：连接已断开</span>\n';
+            }
+
+            outputContent.scrollTop = outputContent.scrollHeight;
+            outputLoading.style.display = 'none';
+
+            // 显示关闭按钮
+            updateOutputModalFooter(outputModalFooter);
+        };
+
+        // 处理完成消息
+        eventSource.addEventListener('complete', () => {
+            eventSource.close();
+            outputLoading.style.display = 'none';
+            outputContent.scrollTop = outputContent.scrollHeight;
+
+            // 只在非直接运行模式下添加普通关闭按钮
+            if (!isDirectRun) {
+                updateOutputModalFooter(outputModalFooter);
+            }
+
+            // 刷新项目列表
+            fetchProjects();
+        });
+    }
+
+    /**
+     * 更新输出模态框底部按钮
+     * @param {HTMLElement} footer - 模态框底部元素
+     * @param {number} [pid] - 项目PID（用于直接运行模式）
+     * @param {boolean} [isRunning=false] - 是否正在运行
+     */
+    function updateOutputModalFooter(footer, pid = null, isRunning = false) {
+        footer.innerHTML = '';
+
+        if (isRunning && pid) {
+            // 添加停止并关闭按钮
+            const stopButton = document.createElement('button');
+            stopButton.type = 'button';
+            stopButton.className = 'btn btn-danger';
+            stopButton.textContent = '停止并关闭';
+            stopButton.addEventListener('click', () => stopAndClose(pid));
+            footer.appendChild(stopButton);
+        } else {
+            // 添加普通关闭按钮
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'btn btn-secondary';
+            closeButton.textContent = '关闭';
+            closeButton.setAttribute('data-bs-dismiss', 'modal');
+            footer.appendChild(closeButton);
+        }
+    }
+
+    // ===== 自动注册功能 =====
+
+    /**
+     * 开始自动注册
+     */
+    function startAutoRegister() {
+        // 清除现有定时器
+        stopAutoRegister();
+
+        // 立即执行一次
+        registerOnline();
+
+        // 设置定时器
+        autoRegisterInterval = setInterval(async () => {
+            try {
+                await registerOnline();
+            } catch (error) {
+                console.error('自动注册失败:', error);
+                stopAutoRegister();
+            }
+        }, AUTO_REGISTER_INTERVAL);
+    }
+
+    /**
+     * 停止自动注册
+     */
+    function stopAutoRegister() {
+        if (autoRegisterInterval) {
+            clearInterval(autoRegisterInterval);
+            autoRegisterInterval = null;
+        }
+    }
+
+    // ===== 事件监听器 =====
+
+    /**
+     * 设置所有事件监听器
+     */
+    function setupEventListeners() {
+        // 注册按钮点击事件
+        document.getElementById('registerButton').addEventListener('click', registerOnline);
+
+        // 保存编辑按钮点击事件
+        document.getElementById('saveEditButton').addEventListener('click', () => {
+            const pid = document.getElementById('editPid').value;
+            const script = document.getElementById('editScript').value;
+            const description = document.getElementById('editDescription').value;
+
+            if (!script.trim() || !description.trim()) {
+                showNotification('请填写完整信息', 'warning');
+                return;
+            }
+
+            updateProject(pid, script, description);
+        });
+
+        // 复制上下文菜单按钮点击事件
+        document.getElementById('copyContextButton').addEventListener('click', () => {
+            if (contextMenuTarget) {
+                copyText(contextMenuTarget.textContent);
+            }
+            hideContextMenu();
+        });
+
+        // 项目列表中的操作按钮事件委托
+        document.getElementById('projectList').addEventListener('click', (e) => {
+            // 启动项目（原生）
+            if (e.target.closest('.start-run-btn')) {
+                const button = e.target.closest('.start-run-btn');
+                const pid = button.getAttribute('data-pid');
+                const background = button.getAttribute('data-background') === 'true';
+                const title = background ? "原生启动(后台运行)" : "原生启动";
+                handleRunRequest(`${API_ENDPOINTS.START_RUN}${pid}?background=${background}`, title);
+            }
+
+            // 启动项目（脚本）
+            if (e.target.closest('.start-script-btn')) {
+                const button = e.target.closest('.start-script-btn');
+                const pid = button.getAttribute('data-pid');
+                handleRunRequest(`${API_ENDPOINTS.START_SCRIPT}${pid}`, "脚本启动");
+            }
+
+            // 停止项目
+            if (e.target.closest('.stop-project-btn')) {
+                const button = e.target.closest('.stop-project-btn');
+                const pid = button.getAttribute('data-pid');
+                stopProject(pid);
+            }
+
+            // 删除项目
+            if (e.target.closest('.delete-project-btn')) {
+                const button = e.target.closest('.delete-project-btn');
+                const id = button.getAttribute('data-id');
+                deleteProject(id);
+            }
+
+            // 编辑项目
+            if (e.target.closest('.edit-project-btn')) {
+                const button = e.target.closest('.edit-project-btn');
+                const pid = button.getAttribute('data-pid');
+                const script = button.getAttribute('data-script');
+                const description = button.getAttribute('data-description');
+                showEditModal(pid, script, description);
+            }
+        });
+
+        // 右键菜单相关事件
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('click', hideContextMenu);
+        document.addEventListener('keydown', handleContextMenuKeyboard);
+
+        // 在页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            stopAutoRegister();
+            destroyAllTooltips();
+        });
+    }
+
+    /**
+     * 处理右键菜单事件
+     * @param {Event} e - 事件对象
+     */
+    function handleContextMenu(e) {
+        if (e.target.classList.contains('code-block')) {
+            e.preventDefault();
+            const menu = document.getElementById('contextMenu');
+            contextMenuTarget = e.target;
+
+            // 设置菜单位置，确保不会超出窗口边界
+            const x = e.pageX;
+            const y = e.pageY;
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            menu.style.left = (x + menuWidth > windowWidth ? x - menuWidth : x) + 'px';
+            menu.style.top = (y + menuHeight > windowHeight ? y - menuHeight : y) + 'px';
+            menu.style.display = 'block';
+
+            // 自动聚焦第一个菜单项
+            const firstItem = menu.querySelector('.context-menu-item');
+            if (firstItem) {
+                firstItem.focus();
+            }
+        }
+    }
+
+    /**
+     * 隐藏右键菜单
+     */
+    function hideContextMenu() {
+        document.getElementById('contextMenu').style.display = 'none';
+        contextMenuTarget = null;
+    }
+
+    /**
+     * 处理右键菜单键盘事件
+     * @param {KeyboardEvent} e - 键盘事件对象
+     */
+    function handleContextMenuKeyboard(e) {
+        const menu = document.getElementById('contextMenu');
+        if (menu.style.display === 'block') {
+            if (e.key === 'Escape') {
+                hideContextMenu();
+            } else if (e.key === 'Enter') {
+                if (contextMenuTarget) {
+                    copyText(contextMenuTarget.textContent);
+                }
+                hideContextMenu();
+            }
+        }
+    }
+
+    // ===== 初始化 =====
+
+    /**
+     * 应用初始化
+     */
+    async function initApp() {
+        // 首次加载项目列表
+        await fetchProjects();
+
+        // 设置事件监听器
+        setupEventListeners();
+
+        // 启动自动注册
+        startAutoRegister();
+
+        // 隐藏通知区域
+        document.getElementById('notificationArea').classList.remove('show');
+    }
+
+    // 页面加载完成后初始化应用
+    document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
