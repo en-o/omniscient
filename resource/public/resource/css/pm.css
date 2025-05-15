@@ -49,11 +49,6 @@ body.modal-open .table-responsive {
 /* 下拉菜单打开时的特殊处理 */
 .dropdown-menu.show {
     z-index: 1080 !important; /* 使用!important确保覆盖任何其他样式 */
-    transform: none !important; /* 确保绝对定位 */
-}
-
-.dropdown-menu dropdown-menu-end show  {
-    inset: 33px -48px auto auto
 }
 
 /* 确保dropdown-toggle在展开时有更高的z-index */
