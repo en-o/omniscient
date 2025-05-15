@@ -100,3 +100,20 @@ body {
         max-width: 80px;
     }
 }
+
+
+/* 下拉菜单层级调整 */
+.dropdown-menu {
+    z-index: 1060; /* 设置比模态框更高的层级 */
+}
+
+/* 确保下拉菜单按钮组不被遮挡 */
+.btn-group {
+    position: relative;
+    z-index: 1060;
+}
+
+/* 下拉菜单打开时保持在顶层 */
+.dropdown-menu.show {
+    z-index: 1060;
+}
