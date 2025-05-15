@@ -112,7 +112,7 @@ window.renderProjectList = function(projects) {
                                 <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
                             </button></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><button class="dropdown-item delete-project-btn" data-id="${project.id}">
+                            <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
                                 <i class="bi bi-trash"></i> 删除
                             </button></li>
                         ` : `
