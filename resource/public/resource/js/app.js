@@ -1,7 +1,11 @@
 // ===== 全局变量 =====
 let contextMenuTarget = null;
 let autoRegisterInterval = null;
-// tooltips variable is now managed in ui.js
+
+
+// 添加一个全局变量来存储项目列表
+window.projectsData = [];
+
 
 // ===== 自动注册功能 =====
 
@@ -171,7 +175,7 @@ window.setupEventListeners = function() {
                 const button = e.target.closest('.delete-project-btn');
                 const id = button.getAttribute('data-id');
                 if (typeof window.deleteProject === 'function') {
-                    window.deleteProject(id);
+                    window.deleteProject(parseInt(id)); // Ensure ID is a number
                 } else {
                     console.error("deleteProject function not available.");
                 }

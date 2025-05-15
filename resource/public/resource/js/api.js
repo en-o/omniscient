@@ -39,7 +39,7 @@ window.apiRequest = async function(url, method = 'GET', body = null) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.error || `请求失败 (${response.status})`);
+        throw new Error(data.error || `Request failed (${response.status})`);
     }
 
     return data;
@@ -51,6 +51,9 @@ window.apiRequest = async function(url, method = 'GET', body = null) {
 window.fetchProjects = async function() {
     try {
         const data = await window.apiRequest(window.API_ENDPOINTS.LIST); // Using window.apiRequest and window.API_ENDPOINTS
+        const projectList = data.data.list || [];
+        window.projectsData = projectList; // Store the fetched data in the global variable
+
         if (typeof window.renderProjectList === 'function') {
             window.renderProjectList(data.data.list || []); // Using window.renderProjectList
         } else {
@@ -59,8 +62,8 @@ window.fetchProjects = async function() {
 
 
         // 获取第一个项目的worker信息来更新标题
-        if (data.data.list && data.data.list.length > 0) {
-            const firstProject = data.data.list[0];
+        if (projectList.length > 0) {
+            const firstProject = projectList[0];
             if (firstProject.worker) {
                 if (typeof window.updatePageTitle === 'function') {
                     window.updatePageTitle(firstProject.worker); // Using window.updatePageTitle
@@ -165,30 +168,101 @@ window.updateProject = async function(pid, script, description) {
  * @param {number} id - 项目ID
  */
 window.deleteProject = async function(id) {
-    if (!confirm('确定要删除该项目吗？此操作不可恢复。')) {
+    //从存储的数据中查找项目详细信息
+     //假设projectsData全局可用
+    if (!window.projectsData || window.projectsData.length === 0) {
+        console.error("Project data is not loaded. Cannot confirm deletion.");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('项目数据未加载，无法执行删除确认。', 'danger');
+        }
+        return;
+    }
+    const projectToDelete = window.projectsData.find(project => project.id === id);
+
+    if (!projectToDelete) {
+        console.error(`Project with ID ${id} not found in local data.`);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('无法找到项目信息进行删除确认。', 'danger');
+        }
+        //没有项目详细信息无法继续
         return;
     }
 
-    try {
-        const result = await window.apiRequest(`${window.API_ENDPOINTS.DELETE}${id}`, 'DELETE'); // Using window.apiRequest and window.API_ENDPOINTS
+    // 填充并显示删除确认模式
+    const deleteConfirmModalElement = document.getElementById('deleteConfirmModal');
+    const deleteProjectNameSpan = document.getElementById('deleteProjectName');
+    const deleteProjectDescriptionSpan = document.getElementById('deleteProjectDescription');
+    const deleteProjectIdInput = document.getElementById('deleteProjectId');
+    const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+
+    if (!deleteConfirmModalElement || !deleteProjectNameSpan || !deleteProjectDescriptionSpan || !deleteProjectIdInput || !confirmDeleteButton) {
+        console.error("Delete confirmation modal elements not found. Check index.html.");
         if (typeof window.showNotification === 'function') {
-            window.showNotification(result.message); // Using window.showNotification
-        } else {
-            console.error("showNotification function not available.");
+            window.showNotification('删除确认模态框组件未加载。', 'danger');
+        }
+        //缺少元素时不能显示模态
+        return;
+    }
+
+    const deleteConfirmModal = new bootstrap.Modal(deleteConfirmModalElement);
+
+
+    const escapeHtmlFunc = typeof window.escapeHtml === 'function' ? window.escapeHtml : (str) => str; // Fallback
+    deleteProjectNameSpan.textContent = escapeHtmlFunc(projectToDelete.name);
+    deleteProjectDescriptionSpan.textContent = escapeHtmlFunc(projectToDelete.description || '无');
+    deleteProjectIdInput.value = id;
+
+    //确保每次只有一个点击监听器连接到确认按钮
+    //创建一个命名函数，以便于删除
+    const confirmDeleteHandler = () => {
+        // Hide the modal first
+        deleteConfirmModal.hide();
+
+        // Proceed with the actual deletion API call
+        executeDelete(id);
+
+        // Remove the event listener after execution or cancellation
+        confirmDeleteButton.removeEventListener('click', confirmDeleteHandler);
+    };
+
+    // Remove any previous click listeners
+    confirmDeleteButton.removeEventListener('click', confirmDeleteHandler); // Defensive removal
+
+    // Add the click listener for the confirm button
+    confirmDeleteButton.addEventListener('click', confirmDeleteHandler);
+
+    // Add a listener to clean up when the modal is hidden (e.g., by clicking cancel or backdrop)
+    deleteConfirmModalElement.addEventListener('hidden.bs.modal', () => {
+        confirmDeleteButton.removeEventListener('click', confirmDeleteHandler);
+    }, { once: true }); // Use { once: true } to automatically remove the listener after it's triggered once
+
+    // Show the modal
+    deleteConfirmModal.show();
+};
+
+/**
+ * 执行实际的删除API调用
+ * @param {number} id - Project ID
+ */
+async function executeDelete(id) {
+    try {
+        const result = await window.apiRequest(`${window.API_ENDPOINTS.DELETE}${id}`, 'DELETE');
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(result.message);
         }
         if (typeof window.fetchProjects === 'function') {
-            await window.fetchProjects(); // Using window.fetchProjects
+            await window.fetchProjects(); // Refresh list after successful deletion
         } else {
-            console.error("fetchProjects function not available.");
+            console.error("fetchProjects function not available after delete.");
         }
     } catch (error) {
         if (typeof window.showNotification === 'function') {
-            window.showNotification(`删除失败：${error.message}`, 'danger'); // Using window.showNotification
+            window.showNotification(`删除失败：${error.message}`, 'danger');
         } else {
-            console.error("showNotification function not available.");
+            console.error("showNotification function not available after delete error.");
         }
     }
-};
+}
 
 /**
  * 停止项目

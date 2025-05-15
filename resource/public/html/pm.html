@@ -102,6 +102,27 @@
     </div>
 </div>
 
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除项目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <p>即将删除项目: <strong><span id="deleteProjectName"></span></strong></p>
+                <p>描述: <span id="deleteProjectDescription"></span></p>
+                <p><strong class="text-danger">确定要删除该项目吗？此操作不可恢复。</strong></p>
+                <input type="hidden" id="deleteProjectId"> </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script src="/resource/js/bootstrap.bundle.min.js"></script>
 <script src="/resource/js/utils.js"></script>
 <script src="/resource/js/api.js"></script>
