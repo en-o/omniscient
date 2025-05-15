@@ -1,100 +1,102 @@
-.container {
-    margin-top: 2rem;
+/* 全局样式 */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 20px 0;
 }
 
+/* 容器样式 */
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+/* 可截断的文本样式 */
 .truncate {
-    max-width: 200px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    cursor: pointer;
+    max-width: 150px;
 }
 
-.badge {
-    cursor: pointer;
-}
-
-.copy-btn {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.8rem;
-}
-
-.action-btn {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.8rem;
-    margin-right: 0.3rem;
-}
-
-/* 添加到现有的 CSS 中 */
+/* 代码块样式 */
 .code-block {
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    padding: 0.2rem 0.4rem;
-    font-family: monospace;
-    font-size: 0.9em;
-    position: relative;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+    cursor: pointer;
 }
 
+.code-block:hover {
+    text-decoration: underline;
+    color: #0d6efd;
+}
+
+/* 输出内容样式 */
+.output-content {
+    height: 400px;
+    overflow-y: auto;
+    background-color: #212529;
+    color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 上下文菜单样式 */
 .context-menu {
     position: absolute;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 5px 0;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-    z-index: 1000;
+    z-index: 1050;
+    background-color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0.25rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0;
+    min-width: 10rem;
 }
 
 .context-menu-item {
-    padding: 5px 20px;
-    cursor: pointer;
+    display: block;
+    width: 100%;
+    padding: 0.25rem 1.5rem;
+    clear: both;
+    font-weight: 400;
+    color: #212529;
+    text-align: inherit;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+    text-align: left;
 }
 
-.context-menu-item:hover {
-    background-color: #f0f0f0;
+.context-menu-item:hover,
+.context-menu-item:focus {
+    color: #16181b;
+    text-decoration: none;
+    background-color: #f8f9fa;
 }
 
+/* 响应式表格样式调整 */
+@media (max-width: 768px) {
+    .table th, .table td {
+        font-size: 0.9rem;
+    }
 
-/* 操作按钮样式优化 */
-.btn-group {
-    position: relative;
+    .truncate, .code-block {
+        max-width: 100px;
+    }
 }
 
-.dropdown-menu {
-    min-width: 120px;
-    z-index: 1021;  /* 确保下拉菜单在最上层 */
-}
+@media (max-width: 576px) {
+    .table th, .table td {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
 
-.dropdown-menu-end {
-    right: 0;
-    left: auto !important;  /* 防止 Bootstrap 的自动定位覆盖 */
-}
-
-.table-responsive {
-    overflow-x: visible !important;  /* 允许下拉菜单溢出容器 */
-}
-
-/* 确保最后一列的下拉菜单不会被截断 */
-.table td:last-child .dropdown-menu {
-    transform-origin: top right;
-}
-
-
-/* 输出显示样式 */
-.output-content {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    padding: 1rem;
-    border-radius: 4px;
-    max-height: 400px;
-    overflow-y: auto;
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    margin: 0;
-}
-
-/* 禁用状态下的按钮样式 */
-.modal-backdrop-dark {
-    opacity: 0.7 !important;
+    .truncate, .code-block {
+        max-width: 80px;
+    }
 }
