@@ -1,9 +1,32 @@
-/* 修复下拉菜单被遮挡问题 */
-
 /* 处理table-responsive容器的样式 */
 .table-responsive {
-    overflow: visible !important; /* 防止溢出内容被裁剪 */
+    /* 只对下拉菜单设置visible，而不是整个容器 */
+    overflow: visible !important;
     z-index: auto !important; /* 确保不创建新的堆叠上下文 */
+}
+
+/* 恢复截断文本样式，确保它们正常工作 */
+.truncate {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 150px !important;
+    display: block !important; /* 确保元素行为一致 */
+}
+
+/*  代码块样式 */
+.code-block {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 150px !important;
+    cursor: pointer !important;
+    display: block !important; /* 确保元素行为一致 */
+}
+.code-block:hover {
+    text-decoration: underline !important;
+    color: #0d6efd !important;
 }
 
 /* 表格容器在模态框打开时的处理 */
@@ -26,8 +49,7 @@ body.modal-open .table-responsive {
 /* 下拉菜单打开时的特殊处理 */
 .dropdown-menu.show {
     z-index: 1080 !important; /* 使用!important确保覆盖任何其他样式 */
-    position: absolute !important; /* 确保绝对定位 */
-    transform: none !important; /* 防止Bootstrap的transform属性影响z-index堆叠 */
+    transform: none !important; /* 确保绝对定位 */
 }
 
 /* 确保dropdown-toggle在展开时有更高的z-index */
@@ -53,9 +75,19 @@ body.modal-open .table-responsive {
 }
 
 /* 表格内的单元格特殊处理 */
-.table td:last-child {
+.table td {
     position: relative !important;
-    z-index: 10 !important; /* 设置相对较低的值，但确保在table内部有较高的值 */
+    z-index: 1 !important; /* 基础z-index */
+}
+
+.table td:last-child {
+    z-index: 10 !important; /* 操作列有较高的z-index */
+}
+
+/* 修复上下文菜单定位问题 */
+.context-menu {
+    position: fixed !important; /* 改为fixed定位，确保相对于视口 */
+    z-index: 2000 !important; /* 极高的z-index确保在最上层 */
 }
 
 /* 在输出模态框显示时确保下拉菜单还能正常显示 */
@@ -63,8 +95,27 @@ body.modal-open .dropdown-menu.show {
     z-index: 1090 !important;
 }
 
-/* 处理可能影响下拉菜单的其他容器 */
-.container, .row, .col, .table {
-    overflow: visible !important;
-    transform: none !important;
+/* 允许特定列的内容正常显示 - 对应脚本命令和启动命令 */
+.table td:nth-child(5) .code-block, /* 启动命令列 */
+.table td:nth-child(6) .code-block  /* 脚本命令列 */ {
+    display: block !important;
+    max-width: 150px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+
+/* 表格溢出时的滚动处理 */
+@media (max-width: 992px) {
+    .table-responsive {
+        overflow-x: auto !important; /* 小屏幕时恢复横向滚动 */
+    }
+
+    /* 下拉菜单在小屏幕时的特殊处理 */
+    .dropdown-menu.show {
+        position: fixed !important;
+        left: auto !important;
+        right: 10px !important;
+    }
 }
