@@ -42,8 +42,9 @@ RUN groupadd -r -g 1001 nodejs && \
     useradd -r -u 1001 -g nodejs nextjs
 
 
-
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+# 创建数据目录并设置适当的权限
+RUN mkdir -p /app/data /app/datatemp && \
+    chown -R nextjs:nodejs /app/data /app/datatemp
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/datatemp ./datatemp
@@ -60,6 +61,6 @@ ENV PORT=3000
 # 使用 Node.js 启动服务器
 #CMD ["node", "server.js"]
 # 修改启动命令，添加文件检查和移动逻辑
-CMD ["sh", "-c", "if [ ! -f /app/data/servers.db ]; then mv /app/datatemp/servers.db /app/data/; fi && node server.js"]
-
+#CMD ["sh", "-c", "if [ ! -f /app/data/servers.db ]; then mv /app/datatemp/servers.db /app/data/; fi && node server.js"]
+CMD ["sh", "-c", "if [ ! -f /app/data/servers.db ]; then cp /app/datatemp/servers.db /app/data/ && echo 'Database file copied successfully'; fi && node server.js"]
 
