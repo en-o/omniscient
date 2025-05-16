@@ -21,7 +21,7 @@ export default function ServerFrame() {
     const getUrlWithCacheBuster = (url: string) => {
         if (!url) return ''
         const separator = url.includes('?') ? '&' : '?'
-        return `${url}${separator}_cache=${refreshKey}`
+        return `${url}${separator}_cache=${refreshKey}_t=${Date.now()}`
     }
 
     // 验证URL是否可访问并更新当前URL
@@ -88,7 +88,7 @@ export default function ServerFrame() {
                 const iframeDoc = iframeRef.current.contentDocument ||
                     (iframeRef.current.contentWindow?.document)
                 if (iframeDoc) {
-                    iframeDoc.location.reload() //重新加载
+                    iframeDoc.location.reload() // 重新加载
                 }
             } catch (e) {
                 // 如果因为跨域问题无法访问contentDocument，使用src刷新方法
@@ -142,7 +142,7 @@ export default function ServerFrame() {
     }
 
     return (
-        <div className="w-full h-[calc(100vh-8rem)] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+        <div className="w-full h-[calc(100vh-8rem)] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm relative">
             {isRefreshing && (
                 <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-10">
                     <div className="bg-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
