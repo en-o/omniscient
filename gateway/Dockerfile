@@ -57,6 +57,9 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+# 禁用 Next.js 遥测数据收集
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # 使用 Node.js 启动服务器
 #CMD ["node", "server.js"]
