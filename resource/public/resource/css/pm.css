@@ -3,7 +3,9 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     padding: 20px 0;
 }
-
+.table-responsive {
+    overflow-x: inherit !important;
+}
 /* 容器样式 */
 .container {
     max-width: 1280px;
