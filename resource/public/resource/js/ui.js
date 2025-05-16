@@ -92,7 +92,7 @@ window.renderProjectList = function(projects) {
                 </span>
             </td>
             <td>
-                <div class="btn-group" data-bs-boundary="viewport"> <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                <div class="btn-group"> <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                             type="button"
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
