@@ -1,20 +1,27 @@
 'use client'
-
-import {useServer} from "@components/ServerContext"
-import {useState, useEffect} from "react"
+import { useServer } from "@components/ServerContext"
+import { useState, useEffect, useRef } from "react"
 import NotFound404 from "@components/NotFound404"
 
 export default function ServerFrame() {
-    const {selectedServerUrl} = useServer()
+    const { selectedServerUrl, refreshKey, isRefreshing } = useServer()
     const [iframeError, setIframeError] = useState(false)
     const [currentUrl, setCurrentUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const iframeRef = useRef<HTMLIFrameElement>(null)
 
     // 处理 URL
     const getFormattedUrl = (url: string) => {
         if (!url) return ''
         const suffix = '/html/pm.html'
         return url.endsWith(suffix) ? url : `${url}${suffix}`
+    }
+
+    // 添加时间戳或随机参数来防止缓存
+    const getUrlWithCacheBuster = (url: string) => {
+        if (!url) return ''
+        const separator = url.includes('?') ? '&' : '?'
+        return `${url}${separator}_cache=${refreshKey}`
     }
 
     // 验证URL是否可访问并更新当前URL
@@ -73,6 +80,29 @@ export default function ServerFrame() {
         }
     }, [selectedServerUrl])
 
+    // 监听refreshKey的变化，当它更新时重载iframe内容
+    useEffect(() => {
+        if (refreshKey > 0 && iframeRef.current && currentUrl) {
+            try {
+                // 尝试以编程方式重新加载iframe
+                const iframeDoc = iframeRef.current.contentDocument ||
+                    (iframeRef.current.contentWindow?.document)
+                if (iframeDoc) {
+                    iframeDoc.location.reload() //重新加载
+                }
+            } catch (e) {
+                // 如果因为跨域问题无法访问contentDocument，使用src刷新方法
+                // 先临时清空URL
+                const tempUrl = currentUrl
+                setCurrentUrl(null)
+                // 使用setTimeout确保DOM有时间更新
+                setTimeout(() => {
+                    setCurrentUrl(tempUrl)
+                }, 50)
+            }
+        }
+    }, [refreshKey, currentUrl])
+
     // 处理 iframe 加载错误
     const handleIframeError = () => {
         setIframeError(true)
@@ -85,8 +115,7 @@ export default function ServerFrame() {
 
     if (!selectedServerUrl) {
         return (
-            <div
-                className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+            <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center text-gray-500 dark:text-gray-400 text-lg bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                 请在导航栏选择一个服务器
             </div>
         )
@@ -113,14 +142,27 @@ export default function ServerFrame() {
     }
 
     return (
-        <iframe
-            src={currentUrl || undefined}
-            title="服务器内容"
-            className="w-full h-[calc(100vh-8rem)] border-0 rounded-lg bg-white shadow-sm"
-            onError={handleIframeError}
-            onLoad={handleIframeLoad}
-        >
-            您的浏览器不支持 iframe。
-        </iframe>
+        <div className="w-full h-[calc(100vh-8rem)] flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+            {isRefreshing && (
+                <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-10">
+                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
+                        <div className="w-6 h-6 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
+                        <span>正在刷新页面...</span>
+                    </div>
+                </div>
+            )}
+
+            <iframe
+                ref={iframeRef}
+                key={refreshKey} // 使用key强制重新创建iframe元素
+                src={currentUrl ? getUrlWithCacheBuster(currentUrl) : undefined}
+                title="服务器内容"
+                className="w-full h-full border-0 rounded-lg"
+                onError={handleIframeError}
+                onLoad={handleIframeLoad}
+            >
+                您的浏览器不支持 iframe。
+            </iframe>
+        </div>
     )
 }

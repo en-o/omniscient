@@ -16,6 +16,9 @@ interface ServerContextType {
     importServers: (data: any) => Promise<{ imported: number; failed: number }>;
     resetDatabase: () => Promise<{ success: boolean; message: string }>;
     loadServers: () => Promise<void>;
+    refreshIframe: () => void;  // 添加刷新iframe的函数
+    isRefreshing: boolean;      // 添加刷新状态
+    refreshKey: number;         // 刷新键，用于触发iframe重新渲染
 }
 
 // 创建上下文
@@ -35,12 +38,26 @@ export function ServerProvider({ children }: ServerProviderProps) {
     const [selectedServerUrl, setSelectedServerUrl] = useState<string>('')
     const [isLoading, setIsLoading] = useState<boolean>(true)
     const [error, setError] = useState<string | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)  // 用于强制刷新iframe
+    const [isRefreshing, setIsRefreshing] = useState(false)  // 刷新状态
+
 
     // 首次加载时获取服务器列表
     useEffect(() => {
         loadServers()
     }, [])
 
+    // 刷新iframe函数
+    const refreshIframe = () => {
+        setIsRefreshing(true)
+        // 更新refreshKey以触发iframe重新渲染
+        setRefreshKey(prevKey => prevKey + 1)
+
+        // 模拟刷新过程，添加一个短暂的延迟
+        setTimeout(() => {
+            setIsRefreshing(false)
+        }, 1000)
+    }
 
     // 加载服务器列表
     const loadServers = async (): Promise<void> => {
@@ -270,7 +287,10 @@ export function ServerProvider({ children }: ServerProviderProps) {
         exportServers,
         importServers,
         resetDatabase,
-        loadServers
+        loadServers,
+        refreshIframe,
+        isRefreshing,
+        refreshKey
     };
 
     return (

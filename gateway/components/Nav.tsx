@@ -13,7 +13,9 @@ export default function Nav() {
         servers,
         isLoading,
         error,
-        setSelectedServerUrl
+        setSelectedServerUrl,
+        refreshIframe, // 从ServerContext获取刷新函数
+        isRefreshing  // 刷新状态
     } = useServer()
 
     // 处理服务器选择变化
@@ -22,6 +24,13 @@ export default function Nav() {
         const selectedServer = servers.find(server => server.id === serverId)
         // 设置全局数据
         setSelectedServerUrl(selectedServer ? selectedServer.url : '')
+    }
+
+    // 处理刷新操作
+    const handleRefresh = () => {
+        if (refreshIframe) {
+            refreshIframe() // 触发刷新函数
+        }
     }
 
     return (
@@ -55,6 +64,22 @@ export default function Nav() {
                             )}
                         </div>
                     </div>
+                    {/* 中间：刷新按钮 */}
+                    {selectedServer && (
+                        <button
+                            onClick={handleRefresh}
+                            disabled={isRefreshing || isLoading}
+                            className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+                                isRefreshing || isLoading
+                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                    : 'bg-green-500 text-white hover:bg-green-600'
+                            }`}
+                            title="刷新服务器页面(清除缓存)"
+                        >
+                            <i className={`bi ${isRefreshing ? 'bi-arrow-repeat animate-spin' : 'bi-arrow-clockwise'}`}></i>
+                            {isRefreshing ? '刷新中...' : '刷新'}
+                        </button>
+                    )}
                     {/* Right side content: Server Management button */}
                     <button
                         onClick={() => setShowModal(true)}
