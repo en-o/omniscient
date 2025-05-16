@@ -8,7 +8,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-# 确保使用正确的平台构建原生模块
+
 RUN npm ci
 
 

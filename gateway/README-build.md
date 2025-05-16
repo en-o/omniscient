@@ -83,6 +83,8 @@ npm run build
 # --no-cache 禁止缓存
 # docker builder prune # 清理缓存
 #docker build --no-cache  -t  tannnn/omniscient-gateway:0.0.1 .
-docker build  -t  tannnn/omniscient-gateway:0.0.1 .
+#docker build  -t  tannnn/omniscient-gateway:0.0.1 .
+#注意不支持 linux/arm/v7 ， 请自己适配
+docker  build --platform linux/amd64,linux/arm64/v8 -t tannnn/omniscient-gateway:0.0.1 .
 docker run -p 3000:3000 tannnn/omniscient-gateway:0.0.1
 ```
