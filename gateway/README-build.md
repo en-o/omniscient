@@ -77,7 +77,7 @@ npm run build
 ## Building for docker
 > 1. https://github.com/vercel/next.js/tree/canary/examples/with-docker-multi-env
 > 2. 我这个项目不能用aline镜像，slim也不行，sqlite安装会出问题 （😔
-> 3. 目前镜像有点大，1.6g 
+> 3. 目前镜像有点大，1.6g 但是 load 下来只有400mb
 ```bash
 # build的时候注意 package-lock.json，我换个环境重新生成就出问题了[如果重新生成，请把node_modules先删除]
 # --no-cache 禁止缓存
