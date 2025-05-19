@@ -19,4 +19,5 @@ type IJpidV1 interface {
 	StartWithRun(ctx context.Context, req *v1.StartWithRunReq) (res *v1.StartWithRunRes, err error)
 	UpdateProject(ctx context.Context, req *v1.UpdateProjectReq) (res *v1.UpdateProjectRes, err error)
 	Delete(ctx context.Context, req *v1.DeleteReq) (res *v1.DeleteRes, err error)
+	StartWithDocker(ctx context.Context, req *v1.StartWithDockerReq) (res *v1.StartWithDockerRes, err error)
 }

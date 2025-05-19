@@ -82,3 +82,15 @@ type DeleteReq struct {
 type DeleteRes struct {
 	Message string `json:"message" dc:"操作结果"`
 }
+
+type StartWithDockerReq struct {
+	g.Meta `path:"/jpid/start/docker/:pid" method:"get" tags:"Jpid" summary:"docker启动"`
+	Pid    int  `v:"required|min:1" json:"pid" dc:"进程ID"`
+	Reset  bool `json:"reset" dc:"是否重启"`
+}
+
+type StartWithDockerRes struct {
+	g.Meta  `mime:"text/event-stream"`
+	Message string `json:"message" dc:"返回信息"`
+	Output  string `json:"output" dc:"执行输出"`
+}
