@@ -160,6 +160,18 @@ window.setupEventListeners = function () {
                 }
             }
 
+            // Docker 启动项目
+            if (e.target.closest('.docker-start-btn')) {
+                const button = e.target.closest('.docker-start-btn');
+                const pid = button.getAttribute('data-pid');
+                const reset = button.getAttribute('data-reset') === 'true';
+                if (typeof window.handleDockerRequest === 'function') {
+                    window.handleDockerRequest(parseInt(pid), reset);
+                } else {
+                    console.error("handleDockerRequest function not available.");
+                }
+            }
+
             // 停止项目
             if (e.target.closest('.stop-project-btn')) {
                 const button = e.target.closest('.stop-project-btn');
@@ -200,7 +212,6 @@ window.setupEventListeners = function () {
         console.error("Project list element not found.");
     }
 
-
     // 上下文菜单相关事件
     if (typeof window.handleContextMenu === 'function') {
         document.addEventListener('contextmenu', window.handleContextMenu);
@@ -219,7 +230,6 @@ window.setupEventListeners = function () {
     } else {
         console.error("handleContextMenuKeyboard function not available.");
     }
-
 
     // 清理页面卸载时的资源
     window.addEventListener('beforeunload', () => {
@@ -304,6 +314,106 @@ window.handleContextMenuKeyboard = function (e) {
         }
     }
 };
+
+
+/**
+ * 处理Docker启动请求
+ * @param {number} pid - 项目PID
+ * @param {boolean} reset - 是否为重启操作
+ */
+window.handleDockerRequest = function(pid, reset) {
+    if (!pid) {
+        console.error("无效的PID");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无效的项目PID", 'danger');
+        }
+        return;
+    }
+
+    // 显示输出模态框
+    const outputModal = document.getElementById('outputModal');
+    const outputModalLabel = document.getElementById('outputModalLabel');
+    const outputContent = document.getElementById('outputContent');
+    const outputLoading = document.getElementById('outputLoading');
+    const outputModalFooter = document.getElementById('outputModalFooter');
+
+    if (!outputModal || !outputModalLabel || !outputContent || !outputLoading || !outputModalFooter) {
+        console.error("输出模态框元素未找到");
+        return;
+    }
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = new bootstrap.Modal(outputModal);
+
+        // 设置模态框标题和初始内容
+        outputModalLabel.textContent = reset ? 'Docker重启输出' : 'Docker启动输出';
+        outputContent.textContent = '';
+        outputContent.style.display = 'none';
+        outputLoading.style.display = 'block';
+
+        // 更新底部按钮
+        if (typeof window.updateOutputModalFooter === 'function') {
+            window.updateOutputModalFooter(outputModalFooter);
+        } else {
+            console.error("updateOutputModalFooter function not available.");
+        }
+
+        // 显示模态框
+        modal.show();
+
+        // 调用Docker启动API
+        if (typeof window.startWithDocker === 'function') {
+            window.startWithDocker(pid, reset)
+                .then(result => {
+                    // 更新输出内容
+                    outputLoading.style.display = 'none';
+                    outputContent.style.display = 'block';
+                    outputContent.textContent = JSON.stringify(result, null, 2);
+
+                    // 成功提示
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification(
+                            reset ? "Docker重启成功" : "Docker启动成功",
+                            'success'
+                        );
+                    } else {
+                        console.error("showNotification function not available.");
+                    }
+
+                    // 更新项目列表
+                    if (typeof window.fetchProjects === 'function') {
+                        setTimeout(window.fetchProjects, 1000); // 稍后刷新列表
+                    } else {
+                        console.error("fetchProjects function not available.");
+                    }
+                })
+                .catch(error => {
+                    // 更新输出内容显示错误
+                    outputLoading.style.display = 'none';
+                    outputContent.style.display = 'block';
+                    outputContent.textContent = error.toString();
+
+                    // 错误提示
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification(
+                            reset ? "Docker重启失败: " + error : "Docker启动失败: " + error,
+                            'danger'
+                        );
+                    } else {
+                        console.error("showNotification function not available.");
+                    }
+                });
+        } else {
+            console.error("startWithDocker function not available.");
+            outputLoading.style.display = 'none';
+            outputContent.style.display = 'block';
+            outputContent.textContent = "错误: Docker启动功能未加载";
+        }
+    } else {
+        console.error("Bootstrap Modal is not available.");
+    }
+};
+
 
 
 // ===== 初始化 =====

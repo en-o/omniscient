@@ -470,3 +470,39 @@ window.handleRunRequest = function (url, title = "运行输出") {
         }
     });
 };
+
+/**
+ * 使用Docker启动项目
+ * @param {number} pid - 项目PID
+ * @param {boolean} reset - 是否重启
+ * @returns {Promise} - API请求的Promise
+ */
+window.startWithDocker = function(pid, reset = false) {
+    if (!pid) {
+        console.error("无效的PID参数");
+        return Promise.reject("无效的PID参数");
+    }
+
+    return fetch(`/jpid/start/docker/${pid}?reset=${reset}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.code !== 0) {
+                throw new Error(data.message || "操作失败");
+            }
+            return data;
+        })
+        .catch(error => {
+            console.error("Docker启动错误:", error);
+            throw error;
+        });
+};

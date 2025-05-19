@@ -68,6 +68,61 @@ window.renderProjectList = function(projects) {
         const tr = document.createElement('tr');
         // Using window.escapeHtml to explicitly call the global function
         const escapeHtmlFunc = typeof window.escapeHtml === 'function' ? window.escapeHtml : (str) => str; // Fallback
+
+        // 根据项目状态和运行方式准备操作菜单项
+        let operationItems = '';
+
+        if (project.status === 0) { // 已停止状态
+            if (project.way === 1) { // Docker方式
+                operationItems = `
+                    <li><button class="dropdown-item docker-start-btn" data-pid="${project.pid}" data-reset="false">
+                        <i class="bi bi-play-fill text-primary"></i> Docker启动
+                    </button></li>
+                    <li><button class="dropdown-item docker-start-btn" data-pid="${project.pid}" data-reset="true">
+                        <i class="bi bi-arrow-clockwise text-success"></i> Docker重启
+                    </button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
+                        <i class="bi bi-trash"></i> 删除
+                    </button></li>
+                `;
+            } else { // 原生方式
+                operationItems = `
+                    <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="false">
+                        <i class="bi bi-play-fill text-primary"></i> 原生启动
+                    </button></li>
+                    <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="true">
+                        <i class="bi bi-play-fill text-success"></i> 原生启动(后台)
+                    </button></li>
+                    <li><button class="dropdown-item start-script-btn" data-pid="${project.pid}">
+                        <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
+                    </button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
+                        <i class="bi bi-trash"></i> 删除
+                    </button></li>
+                `;
+            }
+        } else { // 运行中状态
+            operationItems = `
+                <li><button class="dropdown-item stop-project-btn" data-pid="${project.pid}">
+                    <i class="bi bi-stop-fill text-danger"></i> 停止
+                </button></li>
+            `;
+        }
+
+        // 添加编辑选项（适用于所有项目类型）
+        operationItems += `
+            <li><hr class="dropdown-divider"></li>
+            <li><button class="dropdown-item edit-project-btn"
+                data-pid="${escapeHtmlFunc(project.pid || '')}"
+                data-script="${escapeHtmlFunc(project.script || '')}"
+                data-catalog="${escapeHtmlFunc(project.catalog || '')}"
+                data-description="${escapeHtmlFunc(project.description || '')}">
+                <i class="bi bi-pencil text-info"></i> 编辑
+            </button></li>
+        `;
+
         tr.innerHTML = `
             <td>
                 <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.name)}">${escapeHtmlFunc(project.name)}</div>
@@ -93,7 +148,7 @@ window.renderProjectList = function(projects) {
             </td>
             <td>
                 <span class="badge ${project.way === 1 ? 'bg-primary' : 'bg-success'}">
-                    ${project.way === 1 ? 'dcoker' : 'jdk'}
+                    ${project.way === 1 ? 'docker' : 'jdk'}
                 </span>
             </td>
             <td>
@@ -105,33 +160,7 @@ window.renderProjectList = function(projects) {
                         操作
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        ${project.status === 0 ? `
-                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="false">
-                                <i class="bi bi-play-fill text-primary"></i> 原生启动
-                            </button></li>
-                            <li><button class="dropdown-item start-run-btn" data-pid="${project.pid}" data-background="true">
-                                <i class="bi bi-play-fill text-success"></i> 原生启动(后台)
-                            </button></li>
-                            <li><button class="dropdown-item start-script-btn" data-pid="${project.pid}">
-                                <i class="bi bi-play-circle-fill text-success"></i> 脚本启动
-                            </button></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
-                                <i class="bi bi-trash"></i> 删除
-                            </button></li>
-                        ` : `
-                            <li><button class="dropdown-item stop-project-btn" data-pid="${project.pid}">
-                                <i class="bi bi-stop-fill text-danger"></i> 停止
-                            </button></li>
-                        `}
-                        <li><hr class="dropdown-divider"></li>
-                        <li><button class="dropdown-item edit-project-btn"
-                            data-pid="${escapeHtmlFunc(project.pid || '')}"
-                            data-script="${escapeHtmlFunc(project.script || '')}"
-                            data-catalog="${escapeHtmlFunc(project.catalog || '')}"
-                            data-description="${escapeHtmlFunc(project.description || '')}">
-                            <i class="bi bi-pencil text-info"></i> 编辑
-                        </button></li>
+                        ${operationItems}
                     </ul>
                 </div>
             </td>
