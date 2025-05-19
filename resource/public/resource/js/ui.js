@@ -78,9 +78,6 @@ window.renderProjectList = function(projects) {
                     <li><button class="dropdown-item docker-start-btn" data-pid="${project.pid}" data-reset="false">
                         <i class="bi bi-play-fill text-primary"></i> Docker启动
                     </button></li>
-                    <li><button class="dropdown-item docker-start-btn" data-pid="${project.pid}" data-reset="true">
-                        <i class="bi bi-arrow-clockwise text-success"></i> Docker重启
-                    </button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
                         <i class="bi bi-trash"></i> 删除
@@ -103,12 +100,21 @@ window.renderProjectList = function(projects) {
                     </button></li>
                 `;
             }
-        } else { // 运行中状态
+        } else {
+            // 运行中状态
             operationItems = `
                 <li><button class="dropdown-item stop-project-btn" data-pid="${project.pid}">
                     <i class="bi bi-stop-fill text-danger"></i> 停止
                 </button></li>
             `;
+            if(project.way === 1){
+                operationItems += `
+                 <li><button class="dropdown-item docker-start-btn" data-pid="${project.pid}" data-reset="true">
+                        <i class="bi bi-arrow-clockwise text-success"></i> Docker重启
+                    </button></li>
+            `;
+            }
+
         }
 
         // 添加编辑选项（适用于所有项目类型）
