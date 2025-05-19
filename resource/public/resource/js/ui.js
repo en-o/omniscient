@@ -92,6 +92,11 @@ window.renderProjectList = function(projects) {
                 </span>
             </td>
             <td>
+                <span class="badge ${project.docker === 1 ? 'bg-primary' : 'bg-success'}">
+                    ${project.docker === 1 ? 'dcoker' : 'jdk'}
+                </span>
+            </td>
+            <td>
                 <div class="btn-group"> <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                             type="button"
                             data-bs-toggle="dropdown"
