@@ -69,7 +69,7 @@ func GetJavaProcesses() ([]*entity.LinuxPid, error) {
 				Run:     info.Command,
 				Ports:   strings.Join(info.Ports, ","),
 				Catalog: info.JarDir,
-				Docker:  dockerVal,
+				Way:     dockerVal,
 			}
 			result = append(result, linuxPid)
 		}

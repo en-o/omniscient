@@ -16,7 +16,7 @@ type Jpid struct {
 	Worker      string `json:"worker"      orm:"worker"      description:"服务器"`                     // 服务器
 	Status      int    `json:"status"      orm:"status"      description:"状态[1:启动，0:停止]"`           // 状态[1:启动，0:停止]
 	Description string `json:"description" orm:"description" description:"项目描述"`                    // 项目描述
-	Docker      int    `json:"docker"      orm:"docker"      description:"docker[1:docker, 2:jdk]"` // docker[1:docker, 2:jdk]
+	Way         int    `json:"way"      orm:"way"      description:"启动方式[1:docker, 2:jdk]"` // 启动方式[1:docker, 2:jdk]
 }
 
 // ps -ef | grep java
@@ -29,5 +29,5 @@ type LinuxPid struct {
 	Ports   string `json:"ports"    orm:"ports"       description:"占用的端口"`                      // 占用的端口
 	Catalog string `json:"catalog"     orm:"catalog"     description:"运行目录[jar文件所在目录]"`         // 运行目录[jar文件所在目录]
 	Worker  string `json:"worker"     orm:"worker"     description:"服务器"`                       // 服务器
-	Docker  int    `json:"docker"      orm:"docker"      description:"docker[1:docker, 2:jdk]"` // docker[1:docker, 2:jdk]
+	Way     int    `json:"way"      orm:"way"      description:"启动方式[1:docker, 2:jdk]"` // 启动方式[1:docker, 2:jdk]
 }

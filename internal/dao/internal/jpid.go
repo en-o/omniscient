@@ -31,7 +31,7 @@ type JpidColumns struct {
 	Worker      string // 服务器
 	Status      string // 状态[1:启动，0:停止]
 	Description string // 项目描述
-	Docker      string // docker[1:docker, 2:jdk]
+	Way      string // 启动方式[1:docker, 2:jdk]
 }
 
 // jpidColumns holds the columns for the table jpid.
@@ -46,7 +46,7 @@ var jpidColumns = JpidColumns{
 	Worker:      "worker",
 	Status:      "status",
 	Description: "description",
-	Docker:      "docker",
+	Way:      "way",
 }
 
 // NewJpidDao creates and returns a new DAO object for table data access.

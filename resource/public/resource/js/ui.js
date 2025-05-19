@@ -92,8 +92,8 @@ window.renderProjectList = function(projects) {
                 </span>
             </td>
             <td>
-                <span class="badge ${project.docker === 1 ? 'bg-primary' : 'bg-success'}">
-                    ${project.docker === 1 ? 'dcoker' : 'jdk'}
+                <span class="badge ${project.way === 1 ? 'bg-primary' : 'bg-success'}">
+                    ${project.way === 1 ? 'dcoker' : 'jdk'}
                 </span>
             </td>
             <td>

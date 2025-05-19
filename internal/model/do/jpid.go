@@ -21,5 +21,5 @@ type Jpid struct {
 	Worker      interface{} // 服务器
 	Status      interface{} // 状态[1:启动，0:停止]
 	Description interface{} // 项目描述
-	Docker      interface{} // docker[1:docker, 2:jdk]
+	Way         interface{} // 启动方式[1:docker, 2:jdk]
 }
