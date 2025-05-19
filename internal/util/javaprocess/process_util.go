@@ -2,6 +2,7 @@ package javaprocess
 
 import (
 	"fmt"
+	"io/ioutil"
 	"omniscient/internal/model/entity"
 	"os/exec"
 	"path/filepath"
@@ -14,11 +15,12 @@ import (
 
 // JavaProcessInfo holds information about a Java process
 type JavaProcessInfo struct {
-	Name    string
-	Pid     int
-	Command string
-	Ports   []string
-	JarDir  string
+	Name     string
+	Pid      int
+	Command  string
+	Ports    []string
+	JarDir   string
+	IsDocker bool
 }
 
 // GetJavaProcesses returns a list of running Java processes
@@ -42,18 +44,43 @@ func GetJavaProcesses() ([]*entity.LinuxPid, error) {
 		}
 
 		if info := parseJavaProcess(process); info != nil {
+			// 只保留包含-jar参数的真正Java项目进程
+			if !containsJarParam(info.Command) {
+				continue
+			}
+
+			// 非Docker进程需要检查是否有TCP连接
+			if !info.IsDocker {
+				if len(info.Ports) == 0 {
+					// 跳过没有TCP连接的非Docker进程
+					continue
+				}
+			}
+
+			// Docker值：1表示docker容器，2表示普通JDK进程
+			dockerVal := 2
+			if info.IsDocker {
+				dockerVal = 1
+			}
+
 			linuxPid := &entity.LinuxPid{
 				Name:    info.Name,
 				Pid:     info.Pid,
 				Run:     info.Command,
 				Ports:   strings.Join(info.Ports, ","),
 				Catalog: info.JarDir,
+				Docker:  dockerVal,
 			}
 			result = append(result, linuxPid)
 		}
 	}
 
 	return result, nil
+}
+
+// 检查命令行是否包含-jar参数
+func containsJarParam(command string) bool {
+	return strings.Contains(command, "-jar")
 }
 
 // parseJavaProcess parses a single Java process line and returns process information
@@ -75,19 +102,38 @@ func parseJavaProcess(processLine string) *JavaProcessInfo {
 		return nil
 	}
 
+	// 检查是否为Docker中的进程
+	isDocker := checkIfDockerProcess(pid)
+
 	ports := getTCPPorts(pid)
 	cmdLinePorts := extractPortFromCommand(command)
 	allPorts := mergePorts(ports, cmdLinePorts)
 	jarDir := getJarDirectory(pid, command)
 
 	return &JavaProcessInfo{
-		Name:    name,
-		Pid:     pid,
-		Command: command,
-		Ports:   allPorts,
-		JarDir:  jarDir,
+		Name:     name,
+		Pid:      pid,
+		Command:  command,
+		Ports:    allPorts,
+		JarDir:   jarDir,
+		IsDocker: isDocker,
 	}
 }
+
+// checkIfDockerProcess checks if a process is running inside a Docker container
+func checkIfDockerProcess(pid int) bool {
+	cgroupPath := fmt.Sprintf("/proc/%d/cgroup", pid)
+
+	content, err := ioutil.ReadFile(cgroupPath)
+	if err != nil {
+		return false
+	}
+
+	// 检查cgroup内容是否包含docker标识
+	return strings.Contains(string(content), "docker")
+}
+
+// 已移除不需要的函数
 
 // GetTCPPorts returns all TCP ports used by a process
 func getTCPPorts(pid int) []string {
