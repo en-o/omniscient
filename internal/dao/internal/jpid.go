@@ -23,14 +23,15 @@ type JpidDao struct {
 type JpidColumns struct {
 	Id          string //
 	Name        string // java项目名
-	Ports       string // 运行端口
+	Ports       string // 运行端口,多个逗号隔开
 	Pid         string // pid
 	Catalog     string // 运行目录
-	Run         string // sh脚本启动命令
+	Run         string // 原生启动命令
 	Script      string // sh脚本启动命令
-	Status      string // 状态[1:启动，0:停止]
 	Worker      string // 服务器
+	Status      string // 状态[1:启动，0:停止]
 	Description string // 项目描述
+	Docker      string // docker[1:docker, 2:jdk]
 }
 
 // jpidColumns holds the columns for the table jpid.
@@ -42,9 +43,10 @@ var jpidColumns = JpidColumns{
 	Catalog:     "catalog",
 	Run:         "run",
 	Script:      "script",
-	Status:      "status",
 	Worker:      "worker",
+	Status:      "status",
 	Description: "description",
+	Docker:      "docker",
 }
 
 // NewJpidDao creates and returns a new DAO object for table data access.

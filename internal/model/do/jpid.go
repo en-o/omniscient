@@ -13,12 +13,13 @@ type Jpid struct {
 	g.Meta      `orm:"table:jpid, do:true"`
 	Id          interface{} //
 	Name        interface{} // java项目名
-	Ports       interface{} // 运行端口
+	Ports       interface{} // 运行端口,多个逗号隔开
 	Pid         interface{} // pid
 	Catalog     interface{} // 运行目录
 	Run         interface{} // 原生启动命令
 	Script      interface{} // sh脚本启动命令
-	Status      interface{} // 状态[1:启动，0:停止]
 	Worker      interface{} // 服务器
+	Status      interface{} // 状态[1:启动，0:停止]
 	Description interface{} // 项目描述
+	Docker      interface{} // docker[1:docker, 2:jdk]
 }
