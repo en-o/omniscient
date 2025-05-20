@@ -104,7 +104,7 @@ func (c *ControllerV1) StopProject(ctx context.Context, req *v1.StopProjectReq) 
 	}
 
 	// 更新项目状态 - 移到成功执行命令后
-	if err = service.Jpid().UpdateStatus(ctx, req.Pid, 0); err != nil {
+	if err = service.Jpid().UpdateStatusById(ctx, jpid.Id, 0); err != nil {
 		return nil, gerror.Wrapf(err, "更新项目状态失败: pid=%d", req.Pid)
 	}
 
