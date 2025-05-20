@@ -155,6 +155,7 @@ func (s *SJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid
 		"run":     process.Run,
 		"status":  1,
 		"worker":  system.GetWorkerName(), // 确保worker字段也更新
+		"way":     process.Way,
 	}).Where("id", existing.Id).Update()
 	return err
 }
@@ -170,6 +171,7 @@ func (s *SJpid) createNewProject(ctx context.Context, process *entity.LinuxPid) 
 		Run:     process.Run,
 		Status:  1,
 		Worker:  workerName,
+		Way:     process.Way,
 	}).Insert()
 	return err
 }
