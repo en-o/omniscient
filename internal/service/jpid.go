@@ -64,6 +64,15 @@ func (s *SJpid) UpdateStatus(ctx context.Context, pid int, status int) error {
 	return err
 }
 
+// UpdateStatusById 更新项目状态
+func (s *SJpid) UpdateStatusById(ctx context.Context, id int, status int) error {
+	_, err := dao.Jpid.Ctx(ctx).
+		Data(g.Map{"status": status}).
+		Where("id", id).
+		Update()
+	return err
+}
+
 // AutoRegister 自动注册和更新Java进程
 func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) (total, updated, created int, err error) {
 	// 获取当前服务器标识

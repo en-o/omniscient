@@ -131,7 +131,7 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 		return nil, gerror.Wrapf(cmdErr, "Docker执行失败: %s", outputBuffer.String())
 	} else {
 		// 命令执行成功，更新项目状态
-		if updateErr := service.Jpid().UpdateStatus(ctx, req.Pid, 1); updateErr != nil {
+		if updateErr := service.Jpid().UpdateStatusById(ctx, jpid.Id, 1); updateErr != nil {
 			g.Log().Error(ctx, "更新项目状态失败",
 				"pid", jpid.Pid,
 				"name", jpid.Name,
