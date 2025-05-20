@@ -5,6 +5,7 @@ const API_ENDPOINTS = {
     STOP: '/jpid/stop/',
     START_RUN: '/jpid/start/run/',
     START_SCRIPT: '/jpid/start/script/',
+    START_DOCKER: '/jpid/start/docker/',
     DELETE: '/jpid/delete/',
     UPDATE: '/jpid/update/'
 };
@@ -482,8 +483,7 @@ window.startWithDocker = function(pid, reset = false) {
         console.error("无效的PID参数");
         return Promise.reject("无效的PID参数");
     }
-
-    return fetch(`/jpid/start/docker/${pid}?reset=${reset}`, {
+    return fetch(`${API_ENDPOINTS.START_SCRIPT}/${pid}?reset=${reset}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
