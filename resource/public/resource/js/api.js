@@ -271,25 +271,87 @@ async function executeDelete(id) {
  * @param {number} pid - 项目PID
  */
 window.stopProject = async function (pid) {
-    try {
-        const result = await window.apiRequest(`${window.API_ENDPOINTS.STOP}${pid}`, 'POST'); // Using window.apiRequest and window.API_ENDPOINTS
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(result.message); // Using window.showNotification
-        } else {
-            console.error("showNotification function not available.");
-        }
-        if (typeof window.fetchProjects === 'function') {
-            await window.fetchProjects(); // Using window.fetchProjects
-        } else {
-            console.error("fetchProjects function not available.");
-        }
-    } catch (error) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(`停止失败：${error.message}`, 'danger'); // Using window.showNotification
-        } else {
-            console.error("showNotification function not available.");
-        }
+    // 使用 Bootstrap Modal 替代 confirm
+    const stopConfirmModalElement = document.getElementById('stopConfirmModal');
+    if (!stopConfirmModalElement) {
+        // 动态创建确认模态框
+        const modalTemplate = `
+            <div class="modal fade" id="stopConfirmModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">确认停止</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>确定要停止运行吗？</p>
+                            <div id="stopProgress" class="progress d-none">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-danger" id="confirmStopBtn">停止运行</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalTemplate);
     }
+
+    const stopConfirmModal = new bootstrap.Modal(document.getElementById('stopConfirmModal'));
+    const confirmStopBtn = document.getElementById('confirmStopBtn');
+    const progressBar = document.getElementById('stopProgress');
+
+    // 创建Promise以处理用户确认
+    return new Promise((resolve) => {
+        const handleConfirm = async () => {
+            try {
+                // 禁用确认按钮并显示进度条
+                confirmStopBtn.disabled = true;
+                progressBar.classList.remove('d-none');
+
+                // 执行停止操作
+                const result = await window.apiRequest(`${window.API_ENDPOINTS.STOP}${pid}`, 'POST');
+
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(result.message);
+                }
+
+                // 刷新项目列表
+                if (typeof window.fetchProjects === 'function') {
+                    await window.fetchProjects();
+                }
+
+                // 关闭模态框
+                stopConfirmModal.hide();
+                resolve(true);
+            } catch (error) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(`停止失败：${error.message}`, 'danger');
+                }
+                resolve(false);
+            } finally {
+                // 重置按钮和进度条状态
+                confirmStopBtn.disabled = false;
+                progressBar.classList.add('d-none');
+            }
+        };
+
+        // 绑定确认事件
+        confirmStopBtn.onclick = handleConfirm;
+
+        // 显示确认对话框
+        stopConfirmModal.show();
+
+        // 模态框关闭时清理事件监听器
+        stopConfirmModal._element.addEventListener('hidden.bs.modal', () => {
+            confirmStopBtn.onclick = null;
+            resolve(false);
+        }, { once: true });
+    });
 };
 
 /**
