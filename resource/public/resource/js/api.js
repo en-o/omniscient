@@ -472,37 +472,121 @@ window.handleRunRequest = function (url, title = "运行输出") {
     });
 };
 
+
+
 /**
- * 使用Docker启动项目
+ * 处理Docker启动请求
  * @param {number} pid - 项目PID
- * @param {boolean} reset - 是否重启
- * @returns {Promise} - API请求的Promise
+ * @param {boolean} reset - 是否为重启操作
  */
-window.startWithDocker = function(pid, reset = false) {
+window.handleDockerRequest = function(pid, reset=false) {
     if (!pid) {
-        console.error("无效的PID参数");
-        return Promise.reject("无效的PID参数");
-    }
-    return fetch(`${API_ENDPOINTS.START_SCRIPT}/${pid}?reset=${reset}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
+        console.error("无效的PID");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无效的项目PID", 'danger');
         }
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`API请求失败: ${response.status}`);
+        return;
+    }
+
+    // 显示输出模态框
+    // Ensure bootstrap is available globally
+    const outputModalElement = document.getElementById('outputModal');
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !outputModalElement) {
+        console.error("Bootstrap Modal or output modal element is not available. Cannot show output.");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无法显示运行输出：依赖组件未加载。", 'danger');
+        }
+        return;
+    }
+    const outputModal = new bootstrap.Modal(outputModalElement);
+
+    document.getElementById('outputModalLabel').textContent = reset ? 'Docker重启输出' : 'Docker启动输出';;
+
+    // 清空并初始化输出内容和底部按钮
+    const outputContent = document.getElementById('outputContent');
+    const outputLoading = document.getElementById('outputLoading');
+    const outputModalFooter = document.getElementById('outputModalFooter');
+
+    if (outputContent) outputContent.innerHTML = '';
+    if (outputLoading) outputLoading.style.display = 'block';
+    if (outputModalFooter) outputModalFooter.innerHTML = '';
+
+    outputModal.show();
+
+
+    // Create SSE connection
+    const eventSource = new EventSource(`${API_ENDPOINTS.START_DOCKER}/${pid}?reset=${reset}`);
+
+    // Handle output messages
+    eventSource.addEventListener('output', (e) => {
+        const line = e.data;
+
+        if (outputContent) {
+            // Handle colored terminal output
+            if (line.includes('\x1b[')) {
+                const coloredLine = line
+                    .replace(/\x1b\[1;31m/g, '<span style="color: #ff5555; font-weight: bold;">') // Red
+                    .replace(/\x1b\[1;32m/g, '<span style="color: #50fa7b; font-weight: bold;">') // Green
+                    .replace(/\x1b\[1;33m/g, '<span style="color: #f1fa8c; font-weight: bold;">') // Yellow
+                    .replace(/\x1b\[1;34m/g, '<span style="color: #bd93f9; font-weight: bold;">') // Blue
+                    .replace(/\x1b\[0m/g, '</span>');
+
+                outputContent.innerHTML += coloredLine + '\n';
+            } else {
+                // Using window.escapeHtml
+                if (typeof window.escapeHtml === 'function') {
+                    outputContent.innerHTML += window.escapeHtml(line) + '\n';
+                } else {
+                    console.error("escapeHtml function not available.");
+                    outputContent.innerHTML += line + '\n'; // Fallback if escapeHtml is missing
+                }
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.code !== 0) {
-                throw new Error(data.message || "操作失败");
+
+            // Auto-scroll to bottom
+            outputContent.scrollTop = outputContent.scrollHeight;
+        } else {
+            console.error("outputContent element not found.");
+        }
+    });
+
+    // Handle errors
+    eventSource.onerror = () => {
+        eventSource.close();
+
+        if (outputContent) {
+            // If a complete event has already been received, don't show error
+            if (!outputContent.innerHTML.includes('执行完成')) {
+                outputContent.innerHTML += '<span style="color: #ff5555; font-weight: bold;">错误：连接已断开</span>\n';
             }
-            return data;
-        })
-        .catch(error => {
-            console.error("Docker启动错误:", error);
-            throw error;
-        });
+
+            outputContent.scrollTop = outputContent.scrollHeight;
+        } else {
+            console.error("outputContent element not found on error.");
+        }
+
+
+        if (outputLoading) outputLoading.style.display = 'none';
+
+        if (typeof window.updateOutputModalFooter === 'function' && outputModalFooter) {
+            window.updateOutputModalFooter(outputModalFooter);
+        } else {
+            console.error("updateOutputModalFooter function or footer not available on error.");
+        }
+    };
+
+    // Handle complete message
+    eventSource.addEventListener('complete', () => {
+        eventSource.close();
+        if (outputLoading) outputLoading.style.display = 'none';
+        if (outputContent) outputContent.scrollTop = outputContent.scrollHeight;
+
+        // Refresh project list
+        if (typeof window.fetchProjects === 'function') {
+            window.fetchProjects(); // Using window.fetchProjects
+        } else {
+            console.error("fetchProjects function not available on complete.");
+        }
+    });
 };
+
+
