@@ -580,7 +580,17 @@ window.handleDockerRequest = function(pid, reset=false) {
         if (outputLoading) outputLoading.style.display = 'none';
         if (outputContent) outputContent.scrollTop = outputContent.scrollHeight;
 
-        // Refresh project list
+        // 添加这行代码来显示关闭按钮
+        if (typeof window.updateOutputModalFooter === 'function' && outputModalFooter) {
+            window.updateOutputModalFooter(outputModalFooter);
+        } else {
+            console.error("updateOutputModalFooter function or footer not available on complete.");
+            // 添加一个默认的关闭按钮作为后备方案
+            outputModalFooter.innerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        `;
+        }
+        // 刷新项目列表
         if (typeof window.fetchProjects === 'function') {
             window.fetchProjects(); // Using window.fetchProjects
         } else {
