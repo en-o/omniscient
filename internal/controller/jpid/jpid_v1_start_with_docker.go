@@ -65,7 +65,7 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 		sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 正在启动新容器: %s\x1b[0m", jpid.Name))
 	}
 
-	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;34m==> 执行命令: docker compose %s %s\x1b[0m", cmdStr, jpid.Name))
+	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;34m==> 执行命令: docker %s %s\x1b[0m", cmdStr, jpid.Name))
 	sendSSEMessage(w, "output", "\x1b[1;33m==> 开始执行...\x1b[0m\n")
 
 	// 创建命令
