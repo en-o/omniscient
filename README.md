@@ -50,6 +50,7 @@ gf build
 ## 启动脚本
 1. 查看进程`ps -ef | grep  omniscient`
 2. 随编译文件构建一个配置文件使用`--gf.gcfg.file`即修改内部配置文件，如下：
+> config.prod.yaml 参考[config.yaml](manifest/config/config.yaml)
 ```shell
 #!/bin/bash
 
