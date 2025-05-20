@@ -107,3 +107,38 @@ window.updatePageTitle = function(worker) {
         document.title = '项目管理';
     }
 };
+
+
+/**
+ * 将ANSI颜色代码转换为HTML
+ * @param {string} text - 包含ANSI代码的文本
+ * @return {string} - 转换后的HTML字符串
+ */
+function ansiToHtml(text) {
+    if (!text) return '';
+
+    // 简单的ANSI颜色转换（可以根据需要扩展）
+    const conversions = [
+        // 红色
+        { pattern: /\x1b\[1;31m(.*?)\x1b\[0m/g, replacement: '<span class="text-danger">$1</span>' },
+        // 绿色
+        { pattern: /\x1b\[1;32m(.*?)\x1b\[0m/g, replacement: '<span class="text-success">$1</span>' },
+        // 黄色
+        { pattern: /\x1b\[1;33m(.*?)\x1b\[0m/g, replacement: '<span class="text-warning">$1</span>' },
+        // 蓝色
+        { pattern: /\x1b\[1;34m(.*?)\x1b\[0m/g, replacement: '<span class="text-primary">$1</span>' },
+        // 重置（清除格式）
+        { pattern: /\x1b\[0m/g, replacement: '</span>' }
+    ];
+
+    let result = text;
+
+    conversions.forEach(({ pattern, replacement }) => {
+        result = result.replace(pattern, replacement);
+    });
+
+    // 处理换行符
+    result = result.replace(/\n/g, '<br>');
+
+    return result;
+}
