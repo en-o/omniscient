@@ -151,6 +151,7 @@ func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 func (s *SJpid) updateExistingProject(ctx context.Context, existing *entity.Jpid, process *entity.LinuxPid) error {
 	_, err := dao.Jpid.Ctx(ctx).Data(g.Map{
 		"pid":     process.Pid,
+		"name":    process.Name,
 		"catalog": process.Catalog,
 		"run":     process.Run,
 		"status":  1,
