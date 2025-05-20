@@ -46,18 +46,23 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 		sendSSEMessage(w, "error", "\x1b[1;31m==> 非Docker项目，无法使用Docker启动\x1b[0m")
 		return nil, gerror.New("非Docker项目，无法使用Docker启动")
 	}
+	// 3. 验证项目状态
+	if jpid.Status == 1 && !req.Reset {
+		sendSSEMessage(w, "error", "\x1b[1;31m==> 容器已在运行中，如需重启请使用重启功能\x1b[0m")
+		return nil, gerror.New("容器已在运行中")
+	}
 
 	// 发送启动提示
 	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;32m==> 正在启动Docker项目: %s\x1b[0m", jpid.Name))
 
-	// 3. 根据reset参数决定使用的命令
+	// 4. 根据reset参数决定使用的命令
 	var cmdStr string
 	if req.Reset {
 		cmdStr = "restart"
-		sendSSEMessage(w, "output", "\x1b[1;34m==> 执行操作: 重启容器\x1b[0m")
+		sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 正在重启容器: %s\x1b[0m", jpid.Name))
 	} else {
 		cmdStr = "start"
-		sendSSEMessage(w, "output", "\x1b[1;34m==> 执行操作: 启动容器\x1b[0m")
+		sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;33m==> 正在启动新容器: %s\x1b[0m", jpid.Name))
 	}
 
 	sendSSEMessage(w, "output", fmt.Sprintf("\x1b[1;34m==> 执行命令: docker compose %s %s\x1b[0m", cmdStr, jpid.Name))
@@ -110,6 +115,9 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 	case err := <-done:
 		cmdErr = err
 	}
+
+	// 容器状态检查
+	sendSSEMessage(w, "output", "\x1b[1;34m==> 检查容器状态...\x1b[0m")
 
 	// 处理命令执行结果
 	if cmdErr != nil {
