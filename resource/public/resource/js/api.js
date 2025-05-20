@@ -472,96 +472,37 @@ window.handleRunRequest = function (url, title = "运行输出") {
 };
 
 /**
- * 处理Docker启动请求
+ * 使用Docker启动项目
  * @param {number} pid - 项目PID
- * @param {boolean} reset - 是否为重启操作
+ * @param {boolean} reset - 是否重启
+ * @returns {Promise} - API请求的Promise
  */
-window.handleDockerRequest = function(pid, reset) {
+window.startWithDocker = function(pid, reset = false) {
     if (!pid) {
-        console.error("无效的PID");
-        if (typeof window.showNotification === 'function') {
-            window.showNotification("无效的项目PID", 'danger');
+        console.error("无效的PID参数");
+        return Promise.reject("无效的PID参数");
+    }
+
+    return fetch(`/jpid/start/docker/${pid}?reset=${reset}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
         }
-        return;
-    }
-
-    // 显示输出模态框
-    const outputModal = document.getElementById('outputModal');
-    const outputModalLabel = document.getElementById('outputModalLabel');
-    const outputContent = document.getElementById('outputContent');
-    const outputLoading = document.getElementById('outputLoading');
-    const outputModalFooter = document.getElementById('outputModalFooter');
-
-    if (!outputModal || !outputModalLabel || !outputContent || !outputLoading || !outputModalFooter) {
-        console.error("Output modal elements not found.");
-        if (typeof window.showNotification === 'function') {
-            window.showNotification("无法显示输出模态框：找不到必要的DOM元素。", 'danger');
-        }
-        return;
-    }
-
-
-
-    // 清空输出区域并设置标题
-    outputModalLabel.textContent = reset ? 'Docker重启中...' : 'Docker启动中...';
-    outputContent.innerHTML = '<div id="consoleOutput" class="console"></div>';
-    outputContent.style.display = 'none';
-    outputLoading.style.display = 'block';
-
-    // 更新底部按钮
-    if (typeof window.updateOutputModalFooter === 'function') {
-        window.updateOutputModalFooter(outputModalFooter);
-    } else {
-        console.error("updateOutputModalFooter function not available.");
-    }
-
-
-    // 获取控制台输出区域
-    const consoleOutput = document.getElementById('consoleOutput');
-    if (!consoleOutput) {
-        console.error("Console output element not found.");
-        return;
-    }
-    // 创建EventSource连接
-    const url = `/api/jpid/v1/start-with-docker?pid=${pid}&reset=${reset}`;
-    const eventSource = new EventSource(url);
-
-    // 处理输出事件
-    eventSource.addEventListener('output', function(e) {
-        // 不要解析JSON，直接使用事件数据
-        const message = e.data;
-        consoleOutput.innerHTML += `<div>${ansiToHtml(message)}</div>`;
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
-    });
-
-    // 处理错误事件
-    eventSource.addEventListener('error', function(e) {
-        // 不要解析JSON，直接使用事件数据
-        const message = e.data;
-        consoleOutput.innerHTML += `<div class="text-danger">${ansiToHtml(message)}</div>`;
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
-    });
-
-    // 处理完成事件
-    eventSource.addEventListener('complete', function(e) {
-        // 标记操作完成
-        consoleOutput.innerHTML += `<div class="text-success">操作完成。</div>`;
-        consoleOutput.scrollTop = consoleOutput.scrollHeight;
-
-        // 关闭EventSource
-        eventSource.close();
-
-        // 刷新项目列表
-        if (typeof window.loadProjectList === 'function') {
-            setTimeout(window.loadProjectList, 1000);
-        }
-    });
-
-    // 处理EventSource连接错误
-    eventSource.onerror = function(err) {
-        console.error("EventSource failed:", err);
-        consoleOutput.innerHTML += `<div class="text-danger">连接中断：服务器连接错误。</div>`;
-        eventSource.close();
-    };
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.code !== 0) {
+                throw new Error(data.message || "操作失败");
+            }
+            return data;
+        })
+        .catch(error => {
+            console.error("Docker启动错误:", error);
+            throw error;
+        });
 };
-
