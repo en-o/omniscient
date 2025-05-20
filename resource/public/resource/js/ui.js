@@ -131,7 +131,11 @@ window.renderProjectList = function(projects) {
 
         tr.innerHTML = `
             <td>
-                <div class="code-block truncate" data-bs-toggle="tooltip" title="${escapeHtmlFunc(project.name)}">${escapeHtmlFunc(project.name)}</div>
+                <div class="code-block truncate" data-bs-toggle="tooltip" 
+                     title="${project.way === 1 ?
+                        '容器名: ' + escapeHtmlFunc(project.name) :
+                        'JAR包: ' + escapeHtmlFunc(project.name)}"
+                >${escapeHtmlFunc(project.name)}</div>
             </td>
             <td>${escapeHtmlFunc(project.ports)}</td>
             <td>${escapeHtmlFunc(project.pid)}</td>
