@@ -84,19 +84,8 @@ func (s *SJpid) AutoRegister(ctx context.Context, processes []*entity.LinuxPid) 
 
 	// 只获取当前服务器的已存在项目信息
 	var existingProjects []*entity.Jpid
-	// 2. 添加错误处理和重试机制
-	maxRetries := 3
-	for i := 0; i < maxRetries; i++ {
-		if err = dao.Jpid.Ctx(ctx).Where("worker", currentWorker).Scan(&existingProjects); err != nil {
-			if err == context.Canceled || err == context.DeadlineExceeded {
-				// 如果是上下文取消或超时，直接返回
-				return 0, 0, 0, err
-			}
-			// 其他错误可以考虑重试
-			time.Sleep(time.Second * time.Duration(i+1))
-			continue
-		}
-		break
+	if err = dao.Jpid.Ctx(ctx).Where("worker", currentWorker).Scan(&existingProjects); err != nil {
+		return 0, 0, 0, err
 	}
 
 	// 构建当前运行进程的PID映射
