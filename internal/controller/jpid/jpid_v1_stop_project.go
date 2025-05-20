@@ -33,7 +33,7 @@ func (c *ControllerV1) StopProject(ctx context.Context, req *v1.StopProjectReq) 
 	var cmd *exec.Cmd
 	if jpid.Way == 1 {
 		// Docker方式停止 - 直接使用docker命令，不需要依赖项目目录
-		cmd = exec.Command("docker", "compose", "stop", jpid.Name)
+		cmd = exec.Command("docker", "stop", jpid.Name)
 	} else {
 		// PID方式停止 - 确保PID存在并且有效
 		if jpid.Pid <= 0 {

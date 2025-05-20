@@ -64,7 +64,7 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 	sendSSEMessage(w, "output", "\x1b[1;33m==> 开始执行...\x1b[0m\n")
 
 	// 创建命令
-	cmd := exec.Command("docker", "compose", cmdStr, jpid.Name)
+	cmd := exec.Command("docker", cmdStr, jpid.Name)
 
 	// 4. 设置命令输出管道
 	stdout, err := cmd.StdoutPipe()
