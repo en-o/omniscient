@@ -192,7 +192,7 @@ func (c *ControllerV1) StartWithDocker(ctx context.Context, req *v1.StartWithDoc
 			message = "启动"
 		}
 		logMessage := fmt.Sprintf("Docker命令执行成功，pid: %d, name: %s, reset: %v", jpid.Pid, jpid.Name, req.Reset)
-		sendSSEMessage(w, "output", "\n\x1b[1;32m==> "+message+"成功!\x1b[0m\n"+logMessage)
+		sendSSEMessage(w, "output", message+"成功!"+logMessage)
 
 		// 发送完成消息
 		sendSSEMessage(w, "complete", "执行完成")
