@@ -61,6 +61,11 @@ func GetJavaProcesses() ([]*entity.LinuxPid, error) {
 			dockerVal := 2
 			if info.IsDocker {
 				dockerVal = 1
+				// 如果是Docker进程，获取容器名称作为项目名
+				containerName := getDockerContainerName(info.Pid)
+				if containerName != "" {
+					info.Name = containerName
+				}
 			}
 
 			linuxPid := &entity.LinuxPid{
@@ -118,6 +123,54 @@ func parseJavaProcess(processLine string) *JavaProcessInfo {
 		JarDir:   jarDir,
 		IsDocker: isDocker,
 	}
+}
+
+// getDockerContainerName retrieves the container name for a process running in Docker
+func getDockerContainerName(pid int) string {
+	// 读取进程的cgroup文件
+	cgroupPath := fmt.Sprintf("/proc/%d/cgroup", pid)
+	content, err := ioutil.ReadFile(cgroupPath)
+	if err != nil {
+		return ""
+	}
+
+	// 从cgroup内容中提取容器ID
+	cgroupContent := string(content)
+	var containerID string
+
+	// 常见的Docker cgroup路径格式:
+	// /docker/CONTAINER_ID
+	// /system.slice/docker-CONTAINER_ID.scope
+	// /docker-CONTAINER_ID.scope
+	patterns := []string{
+		`/docker/([a-zA-Z0-9]+)`,
+		`/system\.slice/docker-([a-zA-Z0-9]+)\.scope`,
+		`/docker-([a-zA-Z0-9]+)\.scope`,
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(cgroupContent)
+		if len(matches) > 1 {
+			containerID = matches[1]
+			break
+		}
+	}
+
+	if containerID == "" {
+		return ""
+	}
+
+	// 通过容器ID获取容器名称
+	cmd := exec.Command("docker", "inspect", "--format", "{{.Name}}", containerID)
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	// 去除容器名称前的斜杠和末尾的换行符
+	containerName := strings.TrimPrefix(strings.TrimSpace(string(output)), "/")
+	return containerName
 }
 
 // checkIfDockerProcess checks if a process is running inside a Docker container
