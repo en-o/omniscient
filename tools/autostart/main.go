@@ -13,20 +13,27 @@ import (
 
 const (
 	ToolName = "autostart"
-	Version  = "0.0.1"
+	Version  = "0.0.2"
 )
 
-// 项目配置结构
-type ProjectConfig struct {
-	Name        string            `json:"name"`
-	Type        string            `json:"type"`        // jar, py, go, node, etc.
-	Path        string            `json:"path"`        // 项目路径
-	ExecPath    string            `json:"exec_path"`   // 可执行文件路径
-	Args        []string          `json:"args"`        // 启动参数
-	Env         map[string]string `json:"env"`         // 环境变量
-	WorkDir     string            `json:"work_dir"`    // 工作目录
-	User        string            `json:"user"`        // 运行用户
-	Description string            `json:"description"` // 服务描述
+// 服务配置结构
+type ServiceConfig struct {
+	Name         string            `json:"name"`
+	ExecStart    string            `json:"exec_start"`    // 完整的启动命令
+	WorkDir      string            `json:"work_dir"`      // 工作目录
+	User         string            `json:"user"`          // 运行用户
+	Group        string            `json:"group"`         // 运行组
+	Description  string            `json:"description"`   // 服务描述
+	Env          map[string]string `json:"env"`           // 环境变量
+	Restart      string            `json:"restart"`       // 重启策略
+	RestartSec   int               `json:"restart_sec"`   // 重启间隔
+	KillMode     string            `json:"kill_mode"`     // 终止模式
+	KillSignal   string            `json:"kill_signal"`   // 终止信号
+	TimeoutStart int               `json:"timeout_start"` // 启动超时
+	TimeoutStop  int               `json:"timeout_stop"`  // 停止超时
+	After        []string          `json:"after"`         // 依赖服务
+	Wants        []string          `json:"wants"`         // 期望服务
+	Requires     []string          `json:"requires"`      // 必需服务
 }
 
 func main() {
@@ -66,6 +73,10 @@ func main() {
 		stopService()
 	case "restart":
 		restartService()
+	case "logs":
+		showServiceLogs()
+	case "edit":
+		editService()
 	case "version":
 		fmt.Printf("%s v%s\n", ToolName, Version)
 	case "help", "-h", "--help":
@@ -78,7 +89,7 @@ func main() {
 
 // 检查命令是否需要root权限
 func needsRoot(command string) bool {
-	rootCommands := []string{"add", "remove", "start", "stop", "restart"}
+	rootCommands := []string{"add", "remove", "start", "stop", "restart", "edit"}
 	for _, cmd := range rootCommands {
 		if command == cmd {
 			return true
@@ -89,40 +100,53 @@ func needsRoot(command string) bool {
 
 // 打印帮助信息
 func printHelp() {
-	fmt.Printf("%s v%s - Universal Project Autostart Management Tool\n\n", ToolName, Version)
+	fmt.Printf("%s v%s - Universal Service Autostart Management Tool\n\n", ToolName, Version)
 	fmt.Println("Usage:")
 	fmt.Printf("  %s <command> [arguments]\n\n", ToolName)
 	fmt.Println("Commands:")
-	fmt.Println("  list                          - List all autostart services")
-	fmt.Println("  add <name> <type> <path>      - Add project to autostart")
-	fmt.Println("  remove <name>                 - Remove project from autostart")
-	fmt.Println("  status <name>                 - Show service status")
-	fmt.Println("  start <name>                  - Start service")
-	fmt.Println("  stop <name>                   - Stop service")
-	fmt.Println("  restart <name>                - Restart service")
-	fmt.Println("  version                       - Show version")
-	fmt.Println("  help                          - Show this help")
+	fmt.Println("  list                                    - List all autostart services")
+	fmt.Println("  add <name> <exec-start> [options]      - Add service to autostart")
+	fmt.Println("  remove <name>                           - Remove service from autostart")
+	fmt.Println("  status <name>                           - Show service status")
+	fmt.Println("  start <name>                            - Start service")
+	fmt.Println("  stop <name>                             - Stop service")
+	fmt.Println("  restart <name>                          - Restart service")
+	fmt.Println("  logs <name> [lines]                     - Show service logs")
+	fmt.Println("  edit <name>                             - Edit service configuration")
+	fmt.Println("  version                                 - Show version")
+	fmt.Println("  help                                    - Show this help")
 	fmt.Println("")
-	fmt.Println("Supported Project Types:")
-	fmt.Println("  jar                           - Java JAR applications")
-	fmt.Println("  py                            - Python applications")
-	fmt.Println("  go                            - Go applications")
-	fmt.Println("  node                          - Node.js applications")
+	fmt.Println("Add Options:")
+	fmt.Println("  --workdir=<path>                        - Working directory (default: exec file directory)")
+	fmt.Println("  --user=<username>                       - Run as user (default: root)")
+	fmt.Println("  --group=<groupname>                     - Run as group (default: user's primary group)")
+	fmt.Println("  --description=<text>                    - Service description")
+	fmt.Println("  --env=<KEY=VALUE>                       - Environment variable (can be used multiple times)")
+	fmt.Println("  --restart=<policy>                      - Restart policy (always|on-failure|no, default: always)")
+	fmt.Println("  --restart-sec=<seconds>                 - Restart delay in seconds (default: 5)")
+	fmt.Println("  --kill-mode=<mode>                      - Kill mode (control-group|process|mixed, default: control-group)")
+	fmt.Println("  --kill-signal=<signal>                  - Kill signal (default: SIGTERM)")
+	fmt.Println("  --timeout-start=<seconds>               - Start timeout (default: 90)")
+	fmt.Println("  --timeout-stop=<seconds>                - Stop timeout (default: 90)")
+	fmt.Println("  --after=<service>                       - Start after service (can be used multiple times)")
+	fmt.Println("  --wants=<service>                       - Wants service (can be used multiple times)")
+	fmt.Println("  --requires=<service>                    - Requires service (can be used multiple times)")
 	fmt.Println("")
 	fmt.Println("Examples:")
 	fmt.Println("  # Add a Java application")
-	fmt.Printf("  sudo %s add myapp jar /path/to/app.jar\n", ToolName)
+	fmt.Printf("  sudo %s add myapp \"java -jar /path/to/app.jar\" --workdir=/path/to\n", ToolName)
 	fmt.Println("")
-	fmt.Println("  # Add a Python application")
-	fmt.Printf("  sudo %s add pyapp py /path/to/app.py\n", ToolName)
+	fmt.Println("  # Add a Python application with environment variables")
+	fmt.Printf("  sudo %s add pyapp \"python3 /path/to/app.py\" --user=www-data --env=PYTHONPATH=/path/to --env=DEBUG=true\n", ToolName)
 	fmt.Println("")
-	fmt.Println("  # Add a Go application")
-	fmt.Printf("  sudo %s add goapp go /path/to/app\n", ToolName)
+	fmt.Println("  # Add a Node.js application with custom restart policy")
+	fmt.Printf("  sudo %s add nodeapp \"node /path/to/app.js\" --restart=on-failure --restart-sec=10\n", ToolName)
 	fmt.Println("")
-	fmt.Println("  # List all services")
-	fmt.Printf("  %s list\n", ToolName)
+	fmt.Println("  # Add a service with dependencies")
+	fmt.Printf("  sudo %s add webapp \"./webapp\" --after=network.target --after=mysql.service --requires=mysql.service\n", ToolName)
 	fmt.Println("")
-	fmt.Println("Note: Adding, removing, and controlling services requires root privileges.")
+	fmt.Println("  # View service logs")
+	fmt.Printf("  %s logs myapp 50\n", ToolName)
 }
 
 // 列出所有自启服务
@@ -141,8 +165,8 @@ func listAutostartServices() {
 	lines := strings.Split(string(output), "\n")
 	found := false
 
-	fmt.Printf("%-20s %-12s %-12s\n", "SERVICE", "AUTOSTART", "STATUS")
-	fmt.Println("----------------------------------------------------")
+	fmt.Printf("%-20s %-12s %-12s %-30s\n", "SERVICE", "AUTOSTART", "STATUS", "DESCRIPTION")
+	fmt.Println("--------------------------------------------------------------------------------")
 
 	for _, line := range lines {
 		if strings.Contains(line, "autostart-") && strings.Contains(line, ".service") {
@@ -157,7 +181,10 @@ func listAutostartServices() {
 				statusOutput, _ := statusCmd.Output()
 				activeStatus := strings.TrimSpace(string(statusOutput))
 
-				fmt.Printf("%-20s %-12s %-12s\n", serviceName, autostartStatus, activeStatus)
+				// 获取服务描述
+				description := getServiceDescription(serviceName)
+
+				fmt.Printf("%-20s %-12s %-12s %-30s\n", serviceName, autostartStatus, activeStatus, description)
 				found = true
 			}
 		}
@@ -171,43 +198,41 @@ func listAutostartServices() {
 		fmt.Println("  enabled/disabled - Autostart on boot")
 		fmt.Println("  active/inactive  - Current running status")
 		fmt.Println("")
-		fmt.Printf("Use 'systemctl enable/disable autostart-<name>' to control autostart\n")
+		fmt.Printf("Use '%s status <name>' for detailed status\n", ToolName)
+		fmt.Printf("Use '%s logs <name>' to view service logs\n", ToolName)
 	}
+}
+
+// 获取服务描述
+func getServiceDescription(serviceName string) string {
+	configFile := fmt.Sprintf("/etc/autostart-manager/%s.json", serviceName)
+	if data, err := ioutil.ReadFile(configFile); err == nil {
+		var config ServiceConfig
+		if json.Unmarshal(data, &config) == nil {
+			if config.Description != "" {
+				return config.Description
+			}
+		}
+	}
+	return "-"
 }
 
 // 添加自启服务
 func addAutostartService() {
-	if len(os.Args) < 5 {
-		fmt.Println("Usage: add <service-name> <project-type> <project-path> [extra-args...]")
-		fmt.Println("Example: add myapp jar /path/to/app.jar --server.port=8080")
+	if len(os.Args) < 4 {
+		fmt.Println("Usage: add <service-name> <exec-start> [options]")
+		fmt.Println("Example: add myapp \"java -jar /path/to/app.jar\" --workdir=/path/to --user=myuser")
 		return
 	}
 
 	serviceName := os.Args[2]
-	projectType := os.Args[3]
-	projectPath := os.Args[4]
-	extraArgs := os.Args[5:]
+	execStart := os.Args[3]
+	options := os.Args[4:]
 
-	// 验证项目路径
-	if !filepath.IsAbs(projectPath) {
-		abs, err := filepath.Abs(projectPath)
-		if err != nil {
-			fmt.Printf("Error: Failed to get absolute path: %v\n", err)
-			return
-		}
-		projectPath = abs
-	}
-
-	// 检查文件是否存在
-	if _, err := os.Stat(projectPath); os.IsNotExist(err) {
-		fmt.Printf("Error: Project path does not exist: %s\n", projectPath)
-		return
-	}
-
-	// 构建项目配置
-	config, err := buildProjectConfig(serviceName, projectType, projectPath, extraArgs)
+	// 解析选项
+	config, err := parseAddOptions(serviceName, execStart, options)
 	if err != nil {
-		fmt.Printf("Error: Failed to build project config: %v\n", err)
+		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
@@ -219,15 +244,16 @@ func addAutostartService() {
 	}
 
 	// 保存配置文件
-	err = saveProjectConfig(config)
+	err = saveServiceConfig(config)
 	if err != nil {
-		fmt.Printf("Warning: Failed to save project config: %v\n", err)
+		fmt.Printf("Warning: Failed to save service config: %v\n", err)
 	}
 
 	fmt.Printf("✓ Service '%s' added successfully!\n", serviceName)
-	fmt.Printf("  Type: %s\n", projectType)
-	fmt.Printf("  Path: %s\n", projectPath)
+	fmt.Printf("  Exec: %s\n", config.ExecStart)
+	fmt.Printf("  User: %s\n", config.User)
 	fmt.Printf("  Working Directory: %s\n", config.WorkDir)
+	fmt.Printf("  Restart Policy: %s\n", config.Restart)
 	fmt.Println("")
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  sudo systemctl enable autostart-%s   # Enable autostart on boot\n", serviceName)
@@ -235,90 +261,168 @@ func addAutostartService() {
 	fmt.Printf("  %s status %s                        # Check service status\n", ToolName, serviceName)
 }
 
-// 构建项目配置
-func buildProjectConfig(name, projectType, projectPath string, extraArgs []string) (*ProjectConfig, error) {
-	config := &ProjectConfig{
-		Name:    name,
-		Type:    projectType,
-		Path:    projectPath,
-		WorkDir: filepath.Dir(projectPath),
-		User:    "root",
-		Env:     make(map[string]string),
+// 解析添加选项
+func parseAddOptions(name, execStart string, options []string) (*ServiceConfig, error) {
+	config := &ServiceConfig{
+		Name:         name,
+		ExecStart:    execStart,
+		User:         "root",
+		Group:        "",
+		Description:  fmt.Sprintf("Autostart service: %s", name),
+		Env:          make(map[string]string),
+		Restart:      "always",
+		RestartSec:   5,
+		KillMode:     "control-group",
+		KillSignal:   "SIGTERM",
+		TimeoutStart: 90,
+		TimeoutStop:  90,
+		After:        []string{"network.target"},
+		Wants:        []string{"network.target"},
+		Requires:     []string{},
 	}
 
-	switch projectType {
-	case "jar":
-		config.ExecPath = "java"
-		config.Args = []string{"-jar", projectPath}
-		config.Description = fmt.Sprintf("Java application: %s", name)
-
-	case "py", "python":
-		config.ExecPath = "python3"
-		config.Args = []string{projectPath}
-		config.Description = fmt.Sprintf("Python application: %s", name)
-
-	case "go":
-		config.ExecPath = projectPath
-		config.Args = []string{}
-		config.Description = fmt.Sprintf("Go application: %s", name)
-
-	case "node", "nodejs":
-		config.ExecPath = "node"
-		config.Args = []string{projectPath}
-		config.Description = fmt.Sprintf("Node.js application: %s", name)
-
-	case "shell", "sh":
-		config.ExecPath = "bash"
-		config.Args = []string{projectPath}
-		config.Description = fmt.Sprintf("Shell script: %s", name)
-
-	default:
-		return nil, fmt.Errorf("unsupported project type: %s (supported: jar, py, go, node, shell)", projectType)
+	// 尝试从执行命令中推断工作目录
+	parts := strings.Fields(execStart)
+	if len(parts) > 0 {
+		// 查找可能的文件路径
+		for _, part := range parts {
+			if strings.Contains(part, "/") && !strings.HasPrefix(part, "-") {
+				if filepath.IsAbs(part) {
+					if _, err := os.Stat(part); err == nil {
+						config.WorkDir = filepath.Dir(part)
+						break
+					}
+				}
+			}
+		}
 	}
 
-	// 添加额外参数
-	config.Args = append(config.Args, extraArgs...)
+	// 如果没有推断出工作目录，使用当前目录
+	if config.WorkDir == "" {
+		if wd, err := os.Getwd(); err == nil {
+			config.WorkDir = wd
+		} else {
+			config.WorkDir = "/tmp"
+		}
+	}
+
+	// 解析选项
+	for _, option := range options {
+		if strings.HasPrefix(option, "--workdir=") {
+			config.WorkDir = strings.TrimPrefix(option, "--workdir=")
+		} else if strings.HasPrefix(option, "--user=") {
+			config.User = strings.TrimPrefix(option, "--user=")
+		} else if strings.HasPrefix(option, "--group=") {
+			config.Group = strings.TrimPrefix(option, "--group=")
+		} else if strings.HasPrefix(option, "--description=") {
+			config.Description = strings.TrimPrefix(option, "--description=")
+		} else if strings.HasPrefix(option, "--env=") {
+			envStr := strings.TrimPrefix(option, "--env=")
+			if parts := strings.SplitN(envStr, "=", 2); len(parts) == 2 {
+				config.Env[parts[0]] = parts[1]
+			}
+		} else if strings.HasPrefix(option, "--restart=") {
+			config.Restart = strings.TrimPrefix(option, "--restart=")
+		} else if strings.HasPrefix(option, "--restart-sec=") {
+			if sec := strings.TrimPrefix(option, "--restart-sec="); sec != "" {
+				fmt.Sscanf(sec, "%d", &config.RestartSec)
+			}
+		} else if strings.HasPrefix(option, "--kill-mode=") {
+			config.KillMode = strings.TrimPrefix(option, "--kill-mode=")
+		} else if strings.HasPrefix(option, "--kill-signal=") {
+			config.KillSignal = strings.TrimPrefix(option, "--kill-signal=")
+		} else if strings.HasPrefix(option, "--timeout-start=") {
+			if timeout := strings.TrimPrefix(option, "--timeout-start="); timeout != "" {
+				fmt.Sscanf(timeout, "%d", &config.TimeoutStart)
+			}
+		} else if strings.HasPrefix(option, "--timeout-stop=") {
+			if timeout := strings.TrimPrefix(option, "--timeout-stop="); timeout != "" {
+				fmt.Sscanf(timeout, "%d", &config.TimeoutStop)
+			}
+		} else if strings.HasPrefix(option, "--after=") {
+			service := strings.TrimPrefix(option, "--after=")
+			config.After = append(config.After, service)
+		} else if strings.HasPrefix(option, "--wants=") {
+			service := strings.TrimPrefix(option, "--wants=")
+			config.Wants = append(config.Wants, service)
+		} else if strings.HasPrefix(option, "--requires=") {
+			service := strings.TrimPrefix(option, "--requires=")
+			config.Requires = append(config.Requires, service)
+		} else {
+			return nil, fmt.Errorf("unknown option: %s", option)
+		}
+	}
+
+	// 验证工作目录
+	if config.WorkDir != "" {
+		if !filepath.IsAbs(config.WorkDir) {
+			abs, err := filepath.Abs(config.WorkDir)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get absolute path for workdir: %v", err)
+			}
+			config.WorkDir = abs
+		}
+		if _, err := os.Stat(config.WorkDir); os.IsNotExist(err) {
+			return nil, fmt.Errorf("working directory does not exist: %s", config.WorkDir)
+		}
+	}
 
 	return config, nil
 }
 
 // 创建 systemd 服务
-func createSystemdService(config *ProjectConfig) error {
+func createSystemdService(config *ServiceConfig) error {
 	serviceName := fmt.Sprintf("autostart-%s", config.Name)
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", serviceName)
 
-	// 构建执行命令
-	execStart := config.ExecPath
-	if len(config.Args) > 0 {
-		execStart += " " + strings.Join(config.Args, " ")
-	}
+	// 构建 Unit 段
+	unitSection := "[Unit]\n"
+	unitSection += fmt.Sprintf("Description=%s\n", config.Description)
 
-	// 构建环境变量
-	envVars := ""
+	if len(config.After) > 0 {
+		unitSection += fmt.Sprintf("After=%s\n", strings.Join(config.After, " "))
+	}
+	if len(config.Wants) > 0 {
+		unitSection += fmt.Sprintf("Wants=%s\n", strings.Join(config.Wants, " "))
+	}
+	if len(config.Requires) > 0 {
+		unitSection += fmt.Sprintf("Requires=%s\n", strings.Join(config.Requires, " "))
+	}
+	unitSection += "\n"
+
+	// 构建 Service 段
+	serviceSection := "[Service]\n"
+	serviceSection += "Type=simple\n"
+	serviceSection += fmt.Sprintf("User=%s\n", config.User)
+	if config.Group != "" {
+		serviceSection += fmt.Sprintf("Group=%s\n", config.Group)
+	}
+	if config.WorkDir != "" {
+		serviceSection += fmt.Sprintf("WorkingDirectory=%s\n", config.WorkDir)
+	}
+	serviceSection += fmt.Sprintf("ExecStart=%s\n", config.ExecStart)
+	serviceSection += fmt.Sprintf("Restart=%s\n", config.Restart)
+	serviceSection += fmt.Sprintf("RestartSec=%d\n", config.RestartSec)
+	serviceSection += fmt.Sprintf("KillMode=%s\n", config.KillMode)
+	serviceSection += fmt.Sprintf("KillSignal=%s\n", config.KillSignal)
+	serviceSection += fmt.Sprintf("TimeoutStartSec=%d\n", config.TimeoutStart)
+	serviceSection += fmt.Sprintf("TimeoutStopSec=%d\n", config.TimeoutStop)
+	serviceSection += "StandardOutput=journal\n"
+	serviceSection += "StandardError=journal\n"
+	serviceSection += fmt.Sprintf("SyslogIdentifier=%s\n", serviceName)
+
+	// 添加环境变量
 	for key, value := range config.Env {
-		envVars += fmt.Sprintf("Environment=%s=%s\n", key, value)
+		serviceSection += fmt.Sprintf("Environment=%s=%s\n", key, value)
 	}
+	serviceSection += "\n"
 
-	// 创建服务文件内容
-	serviceContent := fmt.Sprintf(`[Unit]
-Description=%s
-After=network.target
-Wants=network.target
+	// 构建 Install 段
+	installSection := "[Install]\n"
+	installSection += "WantedBy=multi-user.target\n"
 
-[Service]
-Type=simple
-User=%s
-WorkingDirectory=%s
-ExecStart=%s
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=%s
-%s
-[Install]
-WantedBy=multi-user.target
-`, config.Description, config.User, config.WorkDir, execStart, serviceName, envVars)
+	// 组合完整的服务文件内容
+	serviceContent := unitSection + serviceSection + installSection
 
 	// 写入服务文件
 	err := ioutil.WriteFile(servicePath, []byte(serviceContent), 0644)
@@ -336,8 +440,8 @@ WantedBy=multi-user.target
 	return nil
 }
 
-// 保存项目配置
-func saveProjectConfig(config *ProjectConfig) error {
+// 保存服务配置
+func saveServiceConfig(config *ServiceConfig) error {
 	configDir := "/etc/autostart-manager"
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		err = os.MkdirAll(configDir, 0755)
@@ -415,6 +519,79 @@ func showServiceStatus() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
+}
+
+// 显示服务日志
+func showServiceLogs() {
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: logs <service-name> [lines]")
+		return
+	}
+
+	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
+	lines := "50" // 默认显示50行
+
+	if len(os.Args) >= 4 {
+		lines = os.Args[3]
+	}
+
+	cmd := exec.Command("journalctl", "-u", serviceName, "-n", lines, "--no-pager")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
+// 编辑服务
+func editService() {
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: edit <service-name>")
+		return
+	}
+
+	serviceName := os.Args[2]
+	configFile := fmt.Sprintf("/etc/autostart-manager/%s.json", serviceName)
+
+	// 检查配置文件是否存在
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		fmt.Printf("Error: Service '%s' configuration not found\n", serviceName)
+		return
+	}
+
+	// 读取现有配置
+	data, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		fmt.Printf("Error: Failed to read config file: %v\n", err)
+		return
+	}
+
+	var config ServiceConfig
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		fmt.Printf("Error: Failed to parse config file: %v\n", err)
+		return
+	}
+
+	// 显示当前配置
+	fmt.Printf("Current configuration for service '%s':\n", serviceName)
+	fmt.Printf("Description: %s\n", config.Description)
+	fmt.Printf("ExecStart: %s\n", config.ExecStart)
+	fmt.Printf("WorkDir: %s\n", config.WorkDir)
+	fmt.Printf("User: %s\n", config.User)
+	fmt.Printf("Restart: %s\n", config.Restart)
+	fmt.Printf("RestartSec: %d\n", config.RestartSec)
+
+	if len(config.Env) > 0 {
+		fmt.Println("Environment Variables:")
+		for k, v := range config.Env {
+			fmt.Printf("  %s=%s\n", k, v)
+		}
+	}
+
+	fmt.Println("\nTo modify the configuration, edit the JSON file directly:")
+	fmt.Printf("  sudo nano %s\n", configFile)
+	fmt.Println("\nAfter editing, recreate the service:")
+	fmt.Printf("  sudo %s remove %s\n", ToolName, serviceName)
+	fmt.Printf("  sudo %s add %s \"<new-exec-start>\" [new-options]\n", ToolName, serviceName)
 }
 
 // 启动服务
