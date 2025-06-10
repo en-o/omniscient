@@ -143,7 +143,8 @@ func handleShellCommand(ctx context.Context) error {
 
 // 打印帮助信息
 func printShellHelp() {
-	fmt.Println("Service Management Commands:")
+	fmt.Println("Service Management Commands (requires root privileges):")
+	fmt.Println("Usage: sudo omniscient sh <command>")
 	fmt.Println("  status     - Show service status")
 	fmt.Println("  enable     - Enable service auto-start")
 	fmt.Println("  disable    - Disable service auto-start")
