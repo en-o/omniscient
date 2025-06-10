@@ -8,13 +8,18 @@ git clone <repository-url>
 cd autostart
 
 ## 方法1：使用构建脚本（推荐）
+构建完成后，二进制文件将位于：
+- AMD64: build/<version>/amd64/autostart
+- ARM64: build/<version>/arm64/autostart
+```shell
 chmod +x build.sh
 ./build.sh
+```
 
 ## 方法2：手动构建
-go build -o autostart main.go
+### AMD64 架构
+GOOS=linux GOARCH=amd64 go build -o autostart main.go
 
-## 安装到系统路径（可选）
-sudo cp autostart /usr/local/bin/
-## 或者
-sudo cp build/autostart /usr/local/bin/
+### ARM64 架构
+GOOS=linux GOARCH=arm64 go build -o autostart main.go
+
