@@ -95,18 +95,18 @@ var (
 
 // 运行服务器
 func runServer(ctx context.Context) error {
-
 	// 检查当前目录下是否存在 config.prod.yaml
 	workDir, _ := os.Getwd()
 	configPath := filepath.Join(workDir, DefaultConfigFile)
 
-	// 如果外部配置文件存在，则使用外部配置
-	if gfile.Exists(configPath) {
+	// 获取命令行配置的文件路径
+	configFile := g.Cfg().GetAdapter().(*gcfg.AdapterFile).GetFileName()
+	if configFile != "" && gfile.Exists(configFile) {
+		g.Log().Infof(ctx, "Using command line config file: %s", configFile)
+	} else if gfile.Exists(configPath) {
 		g.Log().Infof(ctx, "Using external config file: %s", configPath)
-		err := g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetPath(workDir)
-		if err != nil {
-			return fmt.Errorf("failed to set config path: %v", err)
-		}
+		// 设置默认配置文件路径
+		g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetFileName(configPath)
 	} else {
 		g.Log().Info(ctx, "Using built-in config")
 	}
