@@ -16,14 +16,14 @@ func main() {
 	// 创建命令管理器
 	command := gcmd.Command{
 		Name:  "omniscient",
-		Usage: "omniscient [command]",
+		Usage: "omniscient [command] [arguments]",
 		Brief: "Omniscient service management tool",
 		Description: `
 Omniscient is a web service with comprehensive management capabilities.
 
 Available Commands:
-  run  - Run the HTTP server (default)
-  sh   - Service management shell commands
+  run      - Run the HTTP server (default)
+  sh       - Service management shell commands
 
 Examples:
   omniscient              # Run the server (default)
