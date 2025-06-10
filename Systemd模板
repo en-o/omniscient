@@ -1,0 +1,45 @@
+[Unit]
+Description=Omniscient HTTP Server
+Documentation=https://github.com/your-org/omniscient
+After=network.target network-online.target
+Wants=network-online.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/path/to/omniscient
+ExecStart=/path/to/omniscient run --gf.gcfg.file=/path/to/config.prod.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# 日志配置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniscient
+
+# 安全配置
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/path/to/omniscient
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 环境变量
+Environment=GO_ENV=production
+Environment=GF_GCFG_FILE=/path/to/config.prod.yaml
+
+[Install]
+WantedBy=multi-user.target
+Alias=omniscient.service
