@@ -19,29 +19,30 @@ fi
 BUILD_DIR="build"
 mkdir -p $BUILD_DIR
 
-# 构建二进制文件
-echo "Compiling..."
-go build -ldflags "-s -w" -o $BUILD_DIR/$PROJECT_NAME main.go
+# 构建 AMD64 版本
+echo "Compiling for Linux AMD64..."
+GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $BUILD_DIR/${PROJECT_NAME}_amd64 main.go
+
+# 构建 ARM64 版本
+echo "Compiling for Linux ARM64..."
+GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o $BUILD_DIR/${PROJECT_NAME}_arm64 main.go
 
 # 检查构建结果
-if [ -f "$BUILD_DIR/$PROJECT_NAME" ]; then
+if [ -f "$BUILD_DIR/${PROJECT_NAME}_amd64" ] && [ -f "$BUILD_DIR/${PROJECT_NAME}_arm64" ]; then
     echo "✓ Build successful!"
-    echo "Binary location: $BUILD_DIR/$PROJECT_NAME"
+    echo "Binary locations:"
+    echo "- AMD64: $BUILD_DIR/${PROJECT_NAME}_amd64"
+    echo "- ARM64: $BUILD_DIR/${PROJECT_NAME}_arm64"
 
     # 显示文件信息
-    ls -lh $BUILD_DIR/$PROJECT_NAME
+    ls -lh $BUILD_DIR/${PROJECT_NAME}_*
 
     echo ""
     echo "Installation options:"
-    echo "1. Use directly: ./$BUILD_DIR/$PROJECT_NAME"
-    echo "2. Install to system: sudo cp $BUILD_DIR/$PROJECT_NAME /usr/local/bin/"
-    echo "3. Install to /usr/bin: sudo cp $BUILD_DIR/$PROJECT_NAME /usr/bin/"
-
-    echo ""
-    echo "Usage examples:"
-    echo "  ./$BUILD_DIR/$PROJECT_NAME help"
-    echo "  ./$BUILD_DIR/$PROJECT_NAME list"
-    echo "  sudo ./$BUILD_DIR/$PROJECT_NAME add myapp jar /path/to/app.jar"
+    echo "For AMD64 systems:"
+    echo "  sudo cp $BUILD_DIR/${PROJECT_NAME}_amd64 /usr/local/bin/$PROJECT_NAME"
+    echo "For ARM64 systems:"
+    echo "  sudo cp $BUILD_DIR/${PROJECT_NAME}_arm64 /usr/local/bin/$PROJECT_NAME"
 else
     echo "✗ Build failed!"
     exit 1
