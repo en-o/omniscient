@@ -50,6 +50,7 @@ gf build
 ## 运行命令
 1. 指定配置文件`./omniscient run --gf.gcfg.file=./config.prod.yaml`
 2. 直接运行`./omniscient run` 默认会加载当前目录下`config.prod.yaml`配置文件[如果当前没有会加载内置的配置文件]
+3. 后台运行请看启动脚本
 
 ## 启动脚本
 1. 查看进程`ps -ef | grep  omniscient`
