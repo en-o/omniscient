@@ -2,7 +2,7 @@
 ps: 用的浏览器缓存，缓存被删就没了更换浏览器也没了
 
 1. 在不干扰原本单个服务使用的同时将多个`omniscient` 服务聚合在一起显示
-2. docker https://hub.docker.com/r/tannnn/omniscient-gateway
+2. [docker容器 ：最新版本0.0.2](https://hub.docker.com/r/tannnn/omniscient-gateway)
 
 # init 
 
