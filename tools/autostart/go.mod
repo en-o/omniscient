@@ -1,4 +1,4 @@
-module autorun
+module autostart
 
 go 1.24
 

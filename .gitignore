@@ -21,4 +21,4 @@ bin
 /gateway/node_modules/
 /v1.*
 autostart-manager
-autostart
+#autostart
