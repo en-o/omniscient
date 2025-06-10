@@ -54,41 +54,7 @@ var (
 		Usage: "sh [sub-command]",
 		Brief: "service management shell commands",
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
-			args := parser.GetArgAll()
-			if len(args) == 0 {
-				printShellHelp()
-				return nil
-			}
-
-			switch args[0] {
-			case "status":
-				return showServiceStatus()
-			case "enable":
-				return enableService()
-			case "disable":
-				return disableService()
-			case "start":
-				return startService()
-			case "stop":
-				return stopService()
-			case "restart":
-				return restartService()
-			case "reload":
-				return reloadService()
-			case "install":
-				return installService()
-			case "uninstall":
-				return uninstallService()
-			case "config":
-				if len(args) > 1 {
-					return setDefaultConfig(args[1])
-				}
-				return showCurrentConfig()
-			default:
-				fmt.Printf("Unknown command: %s\n", args[0])
-				printShellHelp()
-				return nil
-			}
+			return handleShellCommand(ctx)
 		},
 	}
 )
@@ -123,6 +89,56 @@ func runServer(ctx context.Context) error {
 	s.SetServerRoot("resource/public")
 	s.Run()
 	return nil
+}
+
+// 处理 shell 命令
+func handleShellCommand(ctx context.Context) error {
+	// 直接从 os.Args 获取参数，这是最可靠的方法
+	osArgs := os.Args
+	var args []string
+
+	// 找到 "sh" 命令的位置，获取后面的参数
+	for i, arg := range osArgs {
+		if arg == "sh" && i+1 < len(osArgs) {
+			args = osArgs[i+1:]
+			break
+		}
+	}
+
+	if len(args) == 0 {
+		printShellHelp()
+		return nil
+	}
+
+	switch args[0] {
+	case "status":
+		return showServiceStatus()
+	case "enable":
+		return enableService()
+	case "disable":
+		return disableService()
+	case "start":
+		return startService()
+	case "stop":
+		return stopService()
+	case "restart":
+		return restartService()
+	case "reload":
+		return reloadService()
+	case "install":
+		return installService()
+	case "uninstall":
+		return uninstallService()
+	case "config":
+		if len(args) > 1 {
+			return setDefaultConfig(args[1])
+		}
+		return showCurrentConfig()
+	default:
+		fmt.Printf("Unknown command: %s\n", args[0])
+		printShellHelp()
+		return nil
+	}
 }
 
 // 打印帮助信息
