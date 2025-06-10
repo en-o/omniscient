@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/os/gcfg"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -94,6 +95,22 @@ var (
 
 // 运行服务器
 func runServer(ctx context.Context) error {
+
+	// 检查当前目录下是否存在 config.prod.yaml
+	workDir, _ := os.Getwd()
+	configPath := filepath.Join(workDir, DefaultConfigFile)
+
+	// 如果外部配置文件存在，则使用外部配置
+	if gfile.Exists(configPath) {
+		g.Log().Infof(ctx, "Using external config file: %s", configPath)
+		err := g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetPath(workDir)
+		if err != nil {
+			return fmt.Errorf("failed to set config path: %v", err)
+		}
+	} else {
+		g.Log().Info(ctx, "Using built-in config")
+	}
+
 	s := g.Server()
 	s.Group("/", func(group *ghttp.RouterGroup) {
 		group.Middleware(ghttp.MiddlewareHandlerResponse)
