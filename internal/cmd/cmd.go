@@ -109,7 +109,6 @@ func handleShellCommand(ctx context.Context) error {
 		printShellHelp()
 		return nil
 	}
-
 	switch args[0] {
 	case "status":
 		return showServiceStatus()
@@ -248,6 +247,7 @@ func reloadService() error {
 
 // 安装 systemd 服务
 func installService() error {
+	fmt.Printf("installService starting ================\n")
 	// 获取当前可执行文件路径
 	execPath, err := os.Executable()
 	if err != nil {
@@ -287,6 +287,7 @@ WantedBy=multi-user.target
 	// 写入服务文件
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", ServiceName)
 	err = gfile.PutContents(servicePath, serviceContent)
+	fmt.Printf("write servicePath{%s} , serviceContent{%s}\n", servicePath, serviceContent)
 	if err != nil {
 		return fmt.Errorf("failed to create service file: %v (try running with sudo)", err)
 	}
