@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 部署脚本 - 支持 Systemd 服务管理
+# 部署脚本 - 支持 Systemd 服务管理 , 只是临时文件，从来没有测试过
 # 使用方法: ./deploy.sh [port] [config_file]
 
 # 默认配置
