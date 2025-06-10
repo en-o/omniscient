@@ -50,8 +50,14 @@ Examples:
   omniscient run          # Run the server explicitly  
   omniscient sh status    # Show service status
   omniscient sh install   # Install systemd service
+  omniscient sh uninstall # uninstall systemd service
   omniscient sh enable    # Enable auto-start
+  omniscient sh disable   # Disable auto-start
   omniscient sh start     # Start service
+  omniscient sh stop      # stop service
+  omniscient sh reload    # reload service
+  omniscient sh restart   # restart service
+  omniscient sh config [file] # Set default config file or show current config
 `,
 		}
 
