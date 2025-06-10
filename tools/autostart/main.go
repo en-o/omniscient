@@ -31,6 +31,7 @@ type ProjectConfig struct {
 
 func main() {
 	// 检查操作系统支持
+	fmt.Printf("system：%s \n", runtime.GOOS)
 	if runtime.GOOS != "linux" {
 		fmt.Printf("Error: This tool currently only supports Linux systems\n")
 		os.Exit(1)
