@@ -22,3 +22,4 @@ bin
 /v1.*
 autostart-manager
 #autostart
+/tools/autostart/build/

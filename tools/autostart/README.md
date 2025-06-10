@@ -20,23 +20,23 @@ chmod +x build.sh
 ### linux 
 ```shell
 # AMD64 架构
-GOOS=linux GOARCH=amd64 go build -o autostart main.go
+GOOS=linux GOARCH=amd64 go build -o build/amd64/autostart main.go
 # ARM64 架构
-GOOS=linux GOARCH=arm64 go build -o autostart main.go
+GOOS=linux GOARCH=arm64 go build -o build/arm64/autostart main.go
 ```
 ### windows
 ```shell 
 # PowerShell
 ## AMD64 架构
-$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o autostart main.go
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o build/amd64/autostart main.go
 
 ## ARM64 架构
-$env:GOOS="linux"; $env:GOARCH="arm64"; go build -o autostart main.go
+$env:GOOS="linux"; $env:GOARCH="arm64"; go build -o build/arm64/autostart main.go
 
 #  CMD
 ## AMD64 架构
-set GOOS=linux && set GOARCH=amd64 && go build -o autostart main.go
+set GOOS=linux && set GOARCH=amd64 && go build -o build/amd64/autostart main.go
 
 ## ARM64 架构
-set GOOS=linux && set GOARCH=arm64 && go build -o autostart main.go
+set GOOS=linux && set GOARCH=arm64 && go build -o build/arm64/autostart main.go
 ```
