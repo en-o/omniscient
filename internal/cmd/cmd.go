@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"github.com/gogf/gf/v2/os/gcmd"
 	"github.com/gogf/gf/v2/os/gfile"
 	"github.com/gogf/gf/v2/text/gstr"
-
 	"omniscient/internal/controller/hello"
 )
 
@@ -358,8 +358,14 @@ func getProcessByPort(port string) (int, error) {
 				pidInfo := parts[5]
 				if strings.Contains(pidInfo, "pid=") {
 					pidStr := gstr.SubStr(pidInfo, gstr.Pos(pidInfo, "pid=")+4)
-					pidStr = gstr.SubStr(pidStr, 0, gstr.Pos(pidStr, ","))
-					return gstr.ToInt(pidStr), nil
+					if gstr.Pos(pidStr, ",") > 0 {
+						pidStr = gstr.SubStr(pidStr, 0, gstr.Pos(pidStr, ","))
+					}
+					pid, err := strconv.Atoi(pidStr)
+					if err != nil {
+						return 0, err
+					}
+					return pid, nil
 				}
 			}
 		}

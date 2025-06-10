@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "omniscient/internal/packed"
+	"os"
 
 	_ "github.com/gogf/gf/contrib/drivers/mysql/v2"
 
@@ -37,9 +38,9 @@ Examples:
 	// 添加子命令
 	command.AddCommand(&cmd.Run, &cmd.Shell)
 
-	// 如果没有提供参数，默认运行服务器
+	// 获取命令行参数
 	ctx := gctx.GetInitCtx()
-	args := gctx.GetArgs()
+	args := os.Args
 
 	if len(args) <= 1 {
 		// 没有参数时默认运行 run 命令
