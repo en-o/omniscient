@@ -337,7 +337,7 @@ WantedBy=multi-user.target
 
 // 保存项目配置
 func saveProjectConfig(config *ProjectConfig) error {
-	configDir := "/etc/autostart"
+	configDir := "/etc/autostart-manager"
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		err = os.MkdirAll(configDir, 0755)
 		if err != nil {
@@ -389,7 +389,7 @@ func removeAutostartService() {
 	}
 
 	// 删除配置文件
-	configFile := fmt.Sprintf("/etc/autostart/%s.json", serviceName)
+	configFile := fmt.Sprintf("/etc/autostart-manager/%s.json", serviceName)
 	os.Remove(configFile) // 忽略错误，配置文件可能不存在
 
 	// 重载 systemd
