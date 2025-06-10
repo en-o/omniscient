@@ -18,5 +18,5 @@ gfcli:
     packSrc:  "resource,manifest"
     mod: ""
     cgo: 0
-    version:  "v1.0.0.2"
+    version:  "v1.0.0.3"
 

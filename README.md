@@ -1,3 +1,38 @@
+# 如何使用编译文件
+> 1. 使用 sudo 运行，要不然install 和 uninsatll会不剩下
+> 2. 默认使用当前目录下的`config.prod.yaml`配置文件
+> 3. 修改配置之后请 `./omniscient sh reload` 重新加载配置文件
+> 4. 安装好之后请使用 `sudo omniscient sh enable` 启用开机自启
+> 5. 查看自启状态请使用 `sudo omniscient sh status` ` Loaded: loaded (/etc/systemd/system/omniscient.service; disabled; preset: enabled)`
+```shell
+USAGE
+    omniscient [command] [arguments]
+
+COMMAND
+    run    run the http server
+    sh     service management shell commands
+
+DESCRIPTION
+    Omniscient is a web service with comprehensive management capabilities.
+    Available Commands:
+    run      - Run the HTTP server (default)
+    sh       - Usage: sudo omniscient sh <command> (Service management shell commands)
+    Examples:
+    omniscient              # Run the server (default)
+    omniscient run          # Run the server explicitly
+    omniscient sh status    # Show service status
+    omniscient sh install   # Install systemd service
+    omniscient sh uninstall # uninstall systemd service
+    omniscient sh enable    # Enable auto-start
+    omniscient sh disable   # Disable auto-start
+    omniscient sh start     # Start service
+    omniscient sh stop      # stop service
+    omniscient sh reload    # reload service
+    omniscient sh restart   # restart service
+    omniscient sh config [file] # Set default config file or show current config
+```
+
+
 # 环境
 > https://goframe.org.cn/docs/cli/install
 ```shell
