@@ -109,6 +109,7 @@ func handleShellCommand(ctx context.Context) error {
 		printShellHelp()
 		return nil
 	}
+
 	switch args[0] {
 	case "status":
 		return showServiceStatus()
@@ -248,6 +249,12 @@ func reloadService() error {
 // 安装 systemd 服务
 func installService() error {
 	fmt.Printf("installService starting ================\n")
+
+	// 检查是否以 root 身份运行
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("installing service requires root privileges. Please run with sudo:\n  sudo ./omniscient sh install")
+	}
+
 	// 获取当前可执行文件路径
 	execPath, err := os.Executable()
 	if err != nil {
@@ -286,14 +293,29 @@ WantedBy=multi-user.target
 
 	// 写入服务文件
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", ServiceName)
-	err = gfile.PutContents(servicePath, serviceContent)
-	fmt.Printf("write servicePath{%s} , serviceContent{%s}\n", servicePath, serviceContent)
+
+	// 使用标准库写入文件，更好的错误处理
+	file, err := os.Create(servicePath)
 	if err != nil {
-		return fmt.Errorf("failed to create service file: %v (try running with sudo)", err)
+		return fmt.Errorf("failed to create service file %s: %v\nMake sure you have write permissions to /etc/systemd/system/", servicePath, err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(serviceContent)
+	if err != nil {
+		return fmt.Errorf("failed to write service file content: %v", err)
+	}
+
+	// 设置文件权限
+	err = os.Chmod(servicePath, 0644)
+	if err != nil {
+		fmt.Printf("Warning: failed to set file permissions: %v\n", err)
 	}
 
 	// 重载 systemd
-	cmd := exec.Command("sudo", "systemctl", "daemon-reload")
+	cmd := exec.Command("systemctl", "daemon-reload")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("failed to reload systemd: %v", err)
@@ -311,6 +333,11 @@ WantedBy=multi-user.target
 
 // 卸载 systemd 服务
 func uninstallService() error {
+	// 检查是否以 root 身份运行
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("uninstalling service requires root privileges. Please run with sudo:\n  sudo ./omniscient sh uninstall")
+	}
+
 	// 先停止服务
 	stopService()
 
@@ -321,11 +348,13 @@ func uninstallService() error {
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", ServiceName)
 	err := os.Remove(servicePath)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove service file: %v (try running with sudo)", err)
+		return fmt.Errorf("failed to remove service file %s: %v", servicePath, err)
 	}
 
 	// 重载 systemd
-	cmd := exec.Command("sudo", "systemctl", "daemon-reload")
+	cmd := exec.Command("systemctl", "daemon-reload")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("failed to reload systemd: %v", err)
