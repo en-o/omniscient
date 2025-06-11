@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -81,6 +82,7 @@ func checkPermissions(command string) error {
 // executeCommand 根据命令执行相应的操作
 func executeCommand(command string) error {
 	sm := service.NewServiceManager()
+	gi := NewGlobalInstaller()
 
 	// 命令映射表
 	commandMap := map[string]commandHandler{
@@ -108,13 +110,14 @@ func executeCommand(command string) error {
 		"logs":    func() { handleServiceLogs(sm) },
 
 		// 工具命令
-		"version":        func() { printVersion() },
-		"-v":             func() { printVersion() },
-		"--version":      func() { printVersion() },
-		"help":           func() { utils.PrintHelp() },
-		"-h":             func() { utils.PrintHelp() },
-		"--help":         func() { utils.PrintHelp() },
-		"install-global": func() { handleInstallGlobal(sm) },
+		"version":          func() { printVersion() },
+		"-v":               func() { printVersion() },
+		"--version":        func() { printVersion() },
+		"help":             func() { utils.PrintHelp() },
+		"-h":               func() { utils.PrintHelp() },
+		"--help":           func() { utils.PrintHelp() },
+		"install-global":   func() { handleInstallGlobal(gi) },
+		"uninstall-global": func() { handleUninstallGlobal(gi) }, // 新增
 	}
 
 	handler, exists := commandMap[command]
@@ -264,72 +267,242 @@ func handleError(err error) {
 }
 
 // handleInstallGlobal 处理全局安装命令
-func handleInstallGlobal(sm *service.ServiceManager) {
-	// 检查当前运行的可执行文件路径
+func handleInstallGlobal(gi *GlobalInstaller) {
+	fmt.Println("Installing autostart to global environment...")
+
+	// 检查是否已经从全局位置运行
+	if isGlobal, globalPath := gi.isRunningFromGlobal(); isGlobal {
+		fmt.Printf("✓ Already installed globally at: %s\n", globalPath)
+		fmt.Println("\nYou can now use 'autostart' command from anywhere:")
+		fmt.Println("  autostart list          # List all services")
+		fmt.Println("  sudo autostart add ...  # Add new service")
+		return
+	}
+
+	// 检查是否已经安装在其他位置
+	if existingPath := gi.findInstalledBinary(); existingPath != "" {
+		fmt.Printf("Found existing installation at: %s\n", existingPath)
+		if !confirmAction("Replace existing installation") {
+			fmt.Println("Installation cancelled.")
+			return
+		}
+	}
+
+	// 获取当前可执行文件路径
 	execPath, err := os.Executable()
 	if err != nil {
-		handleError(fmt.Errorf("无法获取当前可执行文件路径: %v", err))
+		handleError(fmt.Errorf("failed to get current executable path: %v", err))
 		return
 	}
 
-	// 根据系统选择合适的安装位置
-	var targetPaths []string
-	if utils.RedHatBased() {
-		// CentOS/RHEL 系列系统
-		targetPaths = []string{
-			"/usr/local/bin/autostart",
-			"/usr/bin/autostart",
-		}
+	// 确定安装路径
+	targetPath := gi.getPreferredInstallPath()
+
+	// 执行安装
+	if err := gi.installBinary(execPath, targetPath); err != nil {
+		handleError(fmt.Errorf("failed to install globally: %v", err))
+		return
+	}
+
+	fmt.Printf("✓ Successfully installed to: %s\n", targetPath)
+	fmt.Println("\nVerifying installation...")
+
+	// 验证安装
+	if err := gi.verifyInstallation(targetPath); err != nil {
+		fmt.Printf("Warning: Installation verification failed: %v\n", err)
 	} else {
-		// Debian/Ubuntu 系列系统或其他 Linux
-		targetPaths = []string{
-			"/usr/local/bin/autostart",
-			"/usr/bin/autostart",
-		}
+		fmt.Println("✓ Installation verified successfully")
 	}
 
-	// 尝试安装到首选位置
-	var lastError error
-	var installedPath string
+	fmt.Println("\nYou can now use 'autostart' command from anywhere:")
+	fmt.Println("  autostart list          # List all services")
+	fmt.Println("  sudo autostart add ...  # Add new service")
+	fmt.Println("  autostart help          # Show help")
+}
 
-	for _, targetPath := range targetPaths {
-		if err := installBinary(execPath, targetPath); err != nil {
-			lastError = err
-			continue
-		}
-		installedPath = targetPath
-		break
-	}
+// 全局卸载处理函数
+func handleUninstallGlobal(gi *GlobalInstaller) {
+	fmt.Println("Uninstalling autostart from global environment...")
 
+	// 查找已安装的二进制文件
+	installedPath := gi.findInstalledBinary()
 	if installedPath == "" {
-		handleError(fmt.Errorf("无法安装到任何可用位置: %v", lastError))
+		fmt.Println("No global installation found.")
+		fmt.Println("\nPossible locations checked:")
+		for _, path := range gi.possiblePaths {
+			fmt.Printf("  - %s\n", path)
+		}
 		return
 	}
 
-	fmt.Printf("✓ 成功安装到全局环境: %s\n", installedPath)
-	fmt.Println("\n使用方法:")
-	fmt.Println("  autostart list          # 列出所有服务")
-	fmt.Println("  sudo autostart add ...  # 添加新服务")
+	fmt.Printf("Found installation at: %s\n", installedPath)
+
+	// 确认卸载
+	if !confirmAction("Remove global installation") {
+		fmt.Println("Uninstall cancelled.")
+		return
+	}
+
+	// 执行卸载
+	if err := os.Remove(installedPath); err != nil {
+		handleError(fmt.Errorf("failed to remove global installation: %v", err))
+		return
+	}
+
+	fmt.Printf("✓ Successfully removed: %s\n", installedPath)
+	fmt.Println("\nGlobal installation has been removed.")
+	fmt.Println("You can still use autostart from the local binary if available.")
 }
 
 // installBinary 执行二进制文件安装
-func installBinary(srcPath, targetPath string) error {
+func (gi *GlobalInstaller) installBinary(srcPath, targetPath string) error {
+	// 创建目标目录
+	targetDir := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target directory: %v", err)
+	}
+
 	// 读取源文件
 	srcData, err := os.ReadFile(srcPath)
 	if err != nil {
-		return fmt.Errorf("无法读取源文件: %v", err)
+		return fmt.Errorf("failed to read source file: %v", err)
 	}
 
-	// 检查目标目录是否存在
-	targetDir := filepath.Dir(targetPath)
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("无法创建目标目录: %v", err)
+	// 如果目标文件已存在，先备份
+	if _, err := os.Stat(targetPath); err == nil {
+		backupPath := targetPath + ".backup"
+		if err := os.Rename(targetPath, backupPath); err != nil {
+			return fmt.Errorf("failed to backup existing file: %v", err)
+		}
+		defer func() {
+			// 如果安装失败，恢复备份
+			if _, err := os.Stat(targetPath); err != nil {
+				os.Rename(backupPath, targetPath)
+			} else {
+				os.Remove(backupPath)
+			}
+		}()
 	}
 
 	// 写入目标文件
 	if err := os.WriteFile(targetPath, srcData, 0755); err != nil {
-		return fmt.Errorf("无法写入目标文件: %v", err)
+		return fmt.Errorf("failed to write target file: %v", err)
 	}
 
+	return nil
+}
+
+// 验证安装
+func (gi *GlobalInstaller) verifyInstallation(targetPath string) error {
+	// 检查文件是否存在且可执行
+	info, err := os.Stat(targetPath)
+	if err != nil {
+		return fmt.Errorf("binary not found: %v", err)
+	}
+
+	if info.Mode()&0111 == 0 {
+		return fmt.Errorf("binary is not executable")
+	}
+
+	// 尝试执行版本命令
+	cmd := exec.Command(targetPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("binary execution failed: %v", err)
+	}
+
+	if !strings.Contains(string(output), ToolName) {
+		return fmt.Errorf("binary output validation failed")
+	}
+
+	return nil
+}
+
+// 确认操作的辅助函数
+func confirmAction(action string) bool {
+	fmt.Printf("%s? (y/N): ", action)
+
+	var response string
+	fmt.Scanln(&response)
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// GlobalInstaller 全局安装管理器结构
+type GlobalInstaller struct {
+	binaryName    string
+	possiblePaths []string
+}
+
+// NewGlobalInstaller 创建全局安装管理器
+func NewGlobalInstaller() *GlobalInstaller {
+	return &GlobalInstaller{
+		binaryName: ToolName,
+		possiblePaths: []string{
+			"/usr/local/bin/" + ToolName,
+			"/usr/bin/" + ToolName,
+			"/opt/bin/" + ToolName,
+		},
+	}
+}
+
+// 查找已安装的二进制文件
+func (gi *GlobalInstaller) findInstalledBinary() string {
+	for _, path := range gi.possiblePaths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
+// 检查当前是否从全局安装位置运行
+func (gi *GlobalInstaller) isRunningFromGlobal() (bool, string) {
+	execPath, err := os.Executable()
+	if err != nil {
+		return false, ""
+	}
+
+	// 解析符号链接
+	realPath, err := filepath.EvalSymlinks(execPath)
+	if err != nil {
+		realPath = execPath
+	}
+
+	for _, globalPath := range gi.possiblePaths {
+		if realPath == globalPath {
+			return true, globalPath
+		}
+	}
+	return false, ""
+}
+
+// 获取合适的安装路径
+func (gi *GlobalInstaller) getPreferredInstallPath() string {
+	// 检查 /usr/local/bin 是否可写
+	if err := gi.testWritePermission("/usr/local/bin"); err == nil {
+		return "/usr/local/bin/" + gi.binaryName
+	}
+
+	// 检查 /usr/bin 是否可写
+	if err := gi.testWritePermission("/usr/bin"); err == nil {
+		return "/usr/bin/" + gi.binaryName
+	}
+
+	// 回退到第一个路径
+	return gi.possiblePaths[0]
+}
+
+// 测试目录写权限
+func (gi *GlobalInstaller) testWritePermission(dir string) error {
+	testFile := filepath.Join(dir, "."+gi.binaryName+"_test")
+
+	file, err := os.Create(testFile)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	os.Remove(testFile)
 	return nil
 }

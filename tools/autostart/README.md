@@ -16,6 +16,18 @@ systemd 219 (CentOS Linux release 7.9.2009 (Core))
 # 安装命令：  add 项目名  可执行文件路径和执行方式  --workdir=执行文件所在目录
 sudo ./autostart add myapp "java -jar /mnt/c/Test/omniscient_test-0.0.1-SNAPSHOT.jar" --workdir=/mnt/c/Test
 ```
+# 全局环境设置
+```shell
+# chmod +x autostart
+# 安装到全局环境
+sudo ./autostart install-global
+
+# 卸载全局环境
+sudo ./autostart uninstall-global
+
+# 查看帮助（包含新命令）
+autostart help
+```
 
 # 构建
 ## 克隆或下载源码
