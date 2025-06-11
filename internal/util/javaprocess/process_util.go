@@ -49,12 +49,8 @@ func GetJavaProcesses() ([]*entity.LinuxPid, error) {
 				continue
 			}
 
-			// 非Docker进程需要检查是否有TCP连接
-			if !info.IsDocker {
-				if len(info.Ports) == 0 {
-					// 跳过没有TCP连接的非Docker进程
-					continue
-				}
+			if !info.IsDocker && len(info.Ports) == 0 {
+				continue
 			}
 
 			// Docker值：1表示docker容器，2表示普通JDK进程
