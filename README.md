@@ -164,3 +164,6 @@ docker top <容器名称或ID>
 # 查看映射
 docker inspect --format '{{json .Mounts}}' <容器名或ID>
 ```
+
+# 自启备注
+[omniscient.service; enabled; vendor preset: disabled](https://www.yuque.com/tanning/mbquef/zi21spxc6l5nwazh)
