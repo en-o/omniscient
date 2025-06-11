@@ -26,6 +26,7 @@ func NeedsRoot(command string) bool {
 func PrintHelp() {
 	const version = "0.0.2"
 	fmt.Printf("autostart v%s - Universal Service Autostart Management Tool\n\n", version)
+	fmt.Printf("true systemctl service name: autostart-<name>\n")
 
 	fmt.Println("USAGE:")
 	fmt.Println("  autostart <command> [arguments]\n")
