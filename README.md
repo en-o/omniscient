@@ -34,7 +34,7 @@
 > 3. 默认使用当前目录下的`config.prod.yaml`配置文件
 > 4. 修改配置之后请 `./omniscient sh reload` 重新加载配置文件
 > 5. 安装好之后请使用 `sudo omniscient sh enable` 启用开机自启
-> 6. 查看自启状态请使用 `sudo omniscient sh status` ` Loaded: loaded (/etc/systemd/system/omniscient.service; disabled; preset: enabled)`
+> 6. 查看自启状态请使用 `sudo omniscient sh status` ` Loaded: loaded (/etc/systemd/system/omniscient.service; enabled; preset: enabled)`
 ```shell
 USAGE
     omniscient [command] [arguments]
