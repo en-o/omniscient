@@ -313,7 +313,8 @@ func handleInstallGlobal(gi *GlobalInstaller) {
 	} else {
 		fmt.Println("✓ Installation verified successfully")
 	}
-
+	// 检查并修复 CentOS sudo 环境变量问题
+	gi.checkAndFixSudoPath(targetPath)
 	fmt.Println("\nYou can now use 'autostart' command from anywhere:")
 	fmt.Println("  autostart list          # List all services")
 	fmt.Println("  sudo autostart add ...  # Add new service")
@@ -441,7 +442,7 @@ func NewGlobalInstaller() *GlobalInstaller {
 		binaryName: ToolName,
 		possiblePaths: []string{
 			"/usr/local/bin/" + ToolName,
-			"/usr/bin/" + ToolName,
+			"/usr/bin/" + ToolName, // CentOS 首选路径
 			"/opt/bin/" + ToolName,
 		},
 	}
@@ -480,6 +481,13 @@ func (gi *GlobalInstaller) isRunningFromGlobal() (bool, string) {
 
 // 获取合适的安装路径
 func (gi *GlobalInstaller) getPreferredInstallPath() string {
+	// 在 CentOS 系统上优先使用 /usr/bin
+	if gi.isCentOSFamily() {
+		if err := gi.testWritePermission("/usr/bin"); err == nil {
+			return "/usr/bin/" + gi.binaryName
+		}
+	}
+
 	// 检查 /usr/local/bin 是否可写
 	if err := gi.testWritePermission("/usr/local/bin"); err == nil {
 		return "/usr/local/bin/" + gi.binaryName
@@ -505,4 +513,153 @@ func (gi *GlobalInstaller) testWritePermission(dir string) error {
 	file.Close()
 	os.Remove(testFile)
 	return nil
+}
+
+// 修复 CentOS sudo 环境变量问题的检查和处理
+func (gi *GlobalInstaller) checkAndFixSudoPath(targetPath string) {
+	fmt.Println("\nChecking sudo environment...")
+
+	// 检测操作系统是否为 CentOS/RHEL
+	if !gi.isCentOSFamily() {
+		fmt.Println("✓ Non-CentOS system, sudo path should work correctly")
+		return
+	}
+
+	// 测试 sudo 是否能找到命令
+	cmd := exec.Command("sudo", "-n", "which", gi.binaryName)
+	if err := cmd.Run(); err == nil {
+		fmt.Println("✓ sudo can find autostart command")
+		return
+	}
+
+	fmt.Println("⚠ Detected sudo path issue (common on CentOS/RHEL)")
+	fmt.Println("\nTrying to fix sudo secure_path...")
+
+	// 尝试修复 sudoers 配置
+	if err := gi.fixSudoSecurePath(targetPath); err != nil {
+		fmt.Printf("Warning: Could not automatically fix sudo path: %v\n", err)
+		gi.printManualSudoFix(targetPath)
+	} else {
+		fmt.Println("✓ Successfully updated sudo secure_path")
+		fmt.Println("\nVerifying fix...")
+
+		// 验证修复结果
+		verifyCmd := exec.Command("sudo", "-n", "which", gi.binaryName)
+		if err := verifyCmd.Run(); err == nil {
+			fmt.Println("✓ sudo can now find autostart command")
+		} else {
+			fmt.Println("⚠ sudo may still have issues, please check manually")
+		}
+	}
+}
+
+// 检测是否为 CentOS/RHEL 系列
+func (gi *GlobalInstaller) isCentOSFamily() bool {
+	// 检查 /etc/os-release
+	if data, err := os.ReadFile("/etc/os-release"); err == nil {
+		content := string(data)
+		return strings.Contains(content, "centos") ||
+			strings.Contains(content, "rhel") ||
+			strings.Contains(content, "Red Hat")
+	}
+
+	// 检查 /etc/redhat-release
+	if _, err := os.Stat("/etc/redhat-release"); err == nil {
+		return true
+	}
+
+	return false
+}
+
+// 修复 sudo secure_path
+func (gi *GlobalInstaller) fixSudoSecurePath(targetPath string) error {
+	targetDir := filepath.Dir(targetPath)
+
+	// 读取当前 sudoers 配置
+	sudoersPath := "/etc/sudoers"
+	content, err := os.ReadFile(sudoersPath)
+	if err != nil {
+		return fmt.Errorf("failed to read sudoers file: %v", err)
+	}
+
+	contentStr := string(content)
+	lines := strings.Split(contentStr, "\n")
+
+	// 查找 secure_path 行
+	var securePathIndex = -1
+	var currentPath string
+
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "Defaults") &&
+			strings.Contains(line, "secure_path") {
+			securePathIndex = i
+			// 提取当前路径
+			parts := strings.Split(line, "=")
+			if len(parts) >= 2 {
+				currentPath = strings.Trim(parts[1], "\" \t")
+			}
+			break
+		}
+	}
+
+	if securePathIndex == -1 {
+		return fmt.Errorf("secure_path not found in sudoers")
+	}
+
+	// 检查目标目录是否已在 secure_path 中
+	if strings.Contains(currentPath, targetDir) {
+		return nil // 已经包含，无需修改
+	}
+
+	// 添加目标目录到 secure_path
+	newPath := currentPath + ":" + targetDir
+	newLine := fmt.Sprintf("Defaults    secure_path = \"%s\"", newPath)
+	lines[securePathIndex] = newLine
+
+	// 备份原文件
+	backupPath := sudoersPath + ".autostart.backup"
+	if err := os.WriteFile(backupPath, content, 0440); err != nil {
+		return fmt.Errorf("failed to create backup: %v", err)
+	}
+
+	// 写入修改后的内容
+	newContent := strings.Join(lines, "\n")
+	if err := os.WriteFile(sudoersPath, []byte(newContent), 0440); err != nil {
+		// 恢复备份
+		os.WriteFile(sudoersPath, content, 0440)
+		return fmt.Errorf("failed to update sudoers: %v", err)
+	}
+
+	// 验证 sudoers 语法
+	cmd := exec.Command("visudo", "-c")
+	if err := cmd.Run(); err != nil {
+		// 恢复备份
+		os.WriteFile(sudoersPath, content, 0440)
+		return fmt.Errorf("sudoers syntax error, restored backup: %v", err)
+	}
+
+	fmt.Printf("✓ Added %s to sudo secure_path\n", targetDir)
+	fmt.Printf("✓ Backup saved to %s\n", backupPath)
+
+	return nil
+}
+
+// 打印手动修复说明
+func (gi *GlobalInstaller) printManualSudoFix(targetPath string) {
+	targetDir := filepath.Dir(targetPath)
+
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("MANUAL SUDO FIX REQUIRED")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("\nTo fix the sudo issue, you have two options:")
+	fmt.Println("\n1. Update sudoers secure_path (Recommended):")
+	fmt.Println("   sudo visudo")
+	fmt.Println("   Find the line: Defaults    secure_path = \"/usr/local/sbin:...\"")
+	fmt.Printf("   Add '%s' to the path, like:\n", targetDir)
+	fmt.Printf("   Defaults    secure_path = \"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:%s\"\n", targetDir)
+	fmt.Println("\n2. Use full path with sudo:")
+	fmt.Printf("   sudo %s add myservice \"command\"\n", targetPath)
+	fmt.Println("\n3. Alternative: Install to /usr/bin instead:")
+	fmt.Printf("   sudo cp %s /usr/bin/\n", targetPath)
+	fmt.Println(strings.Repeat("=", 60))
 }
