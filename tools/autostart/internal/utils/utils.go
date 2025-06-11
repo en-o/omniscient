@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -577,7 +578,7 @@ func (b *serviceContentBuilder) buildServiceSection() {
 		b.content.WriteString(fmt.Sprintf("WorkingDirectory=%s\n", b.cfg.WorkDir))
 	}
 
-	b.content.WriteString(fmt.Sprintf("ExecStart=%s\n", b.cfg.ExecStart))
+	b.content.WriteString(fmt.Sprintf("ExecStart=%s\n", b.normalizeExecStart(b.cfg.ExecStart, b.cfg.WorkDir)))
 	b.content.WriteString(fmt.Sprintf("Restart=%s\n", b.cfg.Restart))
 	b.content.WriteString(fmt.Sprintf("RestartSec=%d\n", b.cfg.RestartSec))
 	b.content.WriteString(fmt.Sprintf("KillMode=%s\n", b.cfg.KillMode))
@@ -707,4 +708,100 @@ func needsQuoting(value string) bool {
 func RedHatBased() bool {
 	_, err := os.Stat("/etc/redhat-release")
 	return err == nil
+}
+
+// 结合工作目录生成绝对路径
+func (b *serviceContentBuilder) normalizeExecStart(execStart, workDir string) string {
+	parts := strings.Fields(execStart)
+	if len(parts) == 0 {
+		return execStart
+	}
+
+	// 获取第一个参数（可执行文件）
+	executable := parts[0]
+
+	// 如果已经是绝对路径，直接返回
+	if filepath.IsAbs(executable) {
+		return execStart
+	}
+
+	// 处理常见的可执行文件
+	var absoluteExec string
+
+	switch {
+	case executable == "sh" || strings.HasSuffix(executable, ".sh"):
+		// 处理 shell 脚本
+		if executable == "sh" && len(parts) > 1 {
+			// 如果是 "sh script.sh" 格式
+			scriptPath := parts[1]
+			if !filepath.IsAbs(scriptPath) {
+				if workDir != "" {
+					scriptPath = filepath.Join(workDir, scriptPath)
+				} else {
+					// 尝试获取脚本的绝对路径
+					if abs, err := filepath.Abs(scriptPath); err == nil {
+						scriptPath = abs
+					}
+				}
+			}
+			absoluteExec = "/bin/sh"
+			parts[1] = scriptPath
+		} else {
+			// 直接执行 .sh 文件
+			if workDir != "" {
+				absoluteExec = filepath.Join(workDir, executable)
+			} else {
+				if abs, err := filepath.Abs(executable); err == nil {
+					absoluteExec = abs
+				} else {
+					absoluteExec = executable
+				}
+			}
+		}
+
+	case executable == "java":
+		// Java 命令使用系统路径
+		if javaPath, err := exec.LookPath("java"); err == nil {
+			absoluteExec = javaPath
+		} else {
+			absoluteExec = "/usr/bin/java"
+		}
+
+	case executable == "python" || executable == "python3":
+		// Python 命令使用系统路径
+		if pythonPath, err := exec.LookPath(executable); err == nil {
+			absoluteExec = pythonPath
+		} else {
+			absoluteExec = "/usr/bin/" + executable
+		}
+
+	case executable == "node":
+		// Node.js 命令使用系统路径
+		if nodePath, err := exec.LookPath("node"); err == nil {
+			absoluteExec = nodePath
+		} else {
+			absoluteExec = "/usr/bin/node"
+		}
+
+	default:
+		// 其他情况，尝试查找可执行文件
+		if execPath, err := exec.LookPath(executable); err == nil {
+			absoluteExec = execPath
+		} else {
+			// 如果找不到，尝试相对于工作目录
+			if workDir != "" {
+				absoluteExec = filepath.Join(workDir, executable)
+			} else {
+				if abs, err := filepath.Abs(executable); err == nil {
+					absoluteExec = abs
+				} else {
+					absoluteExec = executable
+				}
+			}
+		}
+	}
+
+	// 重建命令
+	parts[0] = absoluteExec
+	return strings.Join(parts, " ")
 }
