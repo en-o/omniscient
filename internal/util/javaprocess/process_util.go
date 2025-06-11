@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"omniscient/internal/model/entity"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -194,12 +195,20 @@ func getTCPPorts(pid int) []string {
 	if err != nil {
 		cmd = exec.Command("bash", "-c", fmt.Sprintf("netstat -tnlp | grep %d", pid))
 		output, err = cmd.Output()
+		// 如果netstat也失败，使用/proc文件系统作为保底方案
 		if err != nil {
 			return nil
 		}
 	}
 
-	return parsePortsFromOutput(string(output))
+	ports := parsePortsFromOutput(string(output))
+
+	// 如果传统方法没有获取到端口，尝试/proc文件系统
+	if len(ports) == 0 {
+		return getTCPPortsFromProc(pid)
+	}
+
+	return ports
 }
 
 // parsePortsFromOutput parses ports from command output
@@ -212,7 +221,8 @@ func parsePortsFromOutput(output string) []string {
 		if line == "" {
 			continue
 		}
-
+		// ss输出格式: LISTEN 0 128 *:8080 *:* users:(("java",pid=1234,fd=10))
+		// netstat输出格式: tcp 0 0 0.0.0.0:8080 0.0.0.0:* LISTEN 1234/java
 		re := regexp.MustCompile(`[:\*](\d+)\s+(?:.*?)\s+LISTEN`)
 		matches := re.FindStringSubmatch(line)
 		if len(matches) > 1 {
@@ -342,4 +352,122 @@ func extractJarPath(command string) string {
 		}
 	}
 	return ""
+}
+
+// /proc文件系统保底方案
+func getTCPPortsFromProc(pid int) []string {
+	// 检查进程是否存在
+	if !processExists(pid) {
+		return nil
+	}
+
+	// 获取进程的socket inode列表
+	inodes := getProcessSocketInodes(pid)
+	if len(inodes) == 0 {
+		return nil
+	}
+
+	// 从/proc/net/tcp和/proc/net/tcp6获取端口信息
+	var ports []string
+	ports = append(ports, getPortsFromTCPTable("/proc/net/tcp", inodes)...)
+	ports = append(ports, getPortsFromTCPTable("/proc/net/tcp6", inodes)...)
+
+	return removeDuplicates(ports)
+}
+
+func processExists(pid int) bool {
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	return err == nil
+}
+
+func getProcessSocketInodes(pid int) []string {
+	var inodes []string
+	fdDir := fmt.Sprintf("/proc/%d/fd", pid)
+
+	files, err := ioutil.ReadDir(fdDir)
+	if err != nil {
+		// 如果无法读取fd目录，可能是权限问题，返回空
+		return nil
+	}
+
+	for _, file := range files {
+		if file.Mode()&os.ModeSymlink != 0 {
+			linkPath := filepath.Join(fdDir, file.Name())
+			target, err := os.Readlink(linkPath)
+			if err != nil {
+				continue
+			}
+
+			// 检查是否是socket
+			if strings.HasPrefix(target, "socket:[") {
+				inode := strings.TrimPrefix(target, "socket:[")
+				inode = strings.TrimSuffix(inode, "]")
+				inodes = append(inodes, inode)
+			}
+		}
+	}
+
+	return inodes
+}
+
+func getPortsFromTCPTable(tcpFile string, targetInodes []string) []string {
+	var ports []string
+
+	content, err := ioutil.ReadFile(tcpFile)
+	if err != nil {
+		return nil
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines[1:] { // 跳过头部
+		fields := strings.Fields(line)
+		if len(fields) < 10 {
+			continue
+		}
+
+		// 检查状态是否为LISTEN (0A = 10 = LISTEN)
+		state := fields[3]
+		if state != "0A" {
+			continue
+		}
+
+		// 检查inode是否匹配
+		lineInode := fields[9]
+		for _, inode := range targetInodes {
+			if lineInode == inode {
+				// 解析本地地址和端口
+				localAddr := fields[1]
+				if port := extractPortFromAddr(localAddr); port != "" {
+					ports = append(ports, port)
+				}
+				break
+			}
+		}
+	}
+
+	return ports
+}
+
+func extractPortFromAddr(addr string) string {
+	parts := strings.Split(addr, ":")
+	if len(parts) == 2 {
+		if portInt, err := strconv.ParseInt(parts[1], 16, 32); err == nil {
+			return fmt.Sprintf("%d", portInt)
+		}
+	}
+	return ""
+}
+
+func removeDuplicates(ports []string) []string {
+	keys := make(map[string]bool)
+	var result []string
+
+	for _, port := range ports {
+		if !keys[port] {
+			keys[port] = true
+			result = append(result, port)
+		}
+	}
+
+	return result
 }
