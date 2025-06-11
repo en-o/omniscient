@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -107,12 +108,13 @@ func executeCommand(command string) error {
 		"logs":    func() { handleServiceLogs(sm) },
 
 		// 工具命令
-		"version":   func() { printVersion() },
-		"-v":        func() { printVersion() },
-		"--version": func() { printVersion() },
-		"help":      func() { utils.PrintHelp() },
-		"-h":        func() { utils.PrintHelp() },
-		"--help":    func() { utils.PrintHelp() },
+		"version":        func() { printVersion() },
+		"-v":             func() { printVersion() },
+		"--version":      func() { printVersion() },
+		"help":           func() { utils.PrintHelp() },
+		"-h":             func() { utils.PrintHelp() },
+		"--help":         func() { utils.PrintHelp() },
+		"install-global": func() { handleInstallGlobal(sm) },
 	}
 
 	handler, exists := commandMap[command]
@@ -259,4 +261,75 @@ func handleError(err error) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// handleInstallGlobal 处理全局安装命令
+func handleInstallGlobal(sm *service.ServiceManager) {
+	// 检查当前运行的可执行文件路径
+	execPath, err := os.Executable()
+	if err != nil {
+		handleError(fmt.Errorf("无法获取当前可执行文件路径: %v", err))
+		return
+	}
+
+	// 根据系统选择合适的安装位置
+	var targetPaths []string
+	if utils.RedHatBased() {
+		// CentOS/RHEL 系列系统
+		targetPaths = []string{
+			"/usr/local/bin/autostart",
+			"/usr/bin/autostart",
+		}
+	} else {
+		// Debian/Ubuntu 系列系统或其他 Linux
+		targetPaths = []string{
+			"/usr/local/bin/autostart",
+			"/usr/bin/autostart",
+		}
+	}
+
+	// 尝试安装到首选位置
+	var lastError error
+	var installedPath string
+
+	for _, targetPath := range targetPaths {
+		if err := installBinary(execPath, targetPath); err != nil {
+			lastError = err
+			continue
+		}
+		installedPath = targetPath
+		break
+	}
+
+	if installedPath == "" {
+		handleError(fmt.Errorf("无法安装到任何可用位置: %v", lastError))
+		return
+	}
+
+	fmt.Printf("✓ 成功安装到全局环境: %s\n", installedPath)
+	fmt.Println("\n使用方法:")
+	fmt.Println("  autostart list          # 列出所有服务")
+	fmt.Println("  sudo autostart add ...  # 添加新服务")
+}
+
+// installBinary 执行二进制文件安装
+func installBinary(srcPath, targetPath string) error {
+	// 读取源文件
+	srcData, err := os.ReadFile(srcPath)
+	if err != nil {
+		return fmt.Errorf("无法读取源文件: %v", err)
+	}
+
+	// 检查目标目录是否存在
+	targetDir := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("无法创建目标目录: %v", err)
+	}
+
+	// 写入目标文件
+	if err := os.WriteFile(targetPath, srcData, 0755); err != nil {
+		return fmt.Errorf("无法写入目标文件: %v", err)
+	}
+
+	return nil
 }

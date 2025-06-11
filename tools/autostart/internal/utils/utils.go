@@ -18,7 +18,8 @@ func NeedsRoot(command string) bool {
 		"remove": true, "rm": true, "delete": true, "uninstall": true,
 		"enable": true, "disable": true,
 		"start": true, "stop": true, "restart": true,
-		"edit": true,
+		"edit":           true,
+		"install-global": true,
 	}
 	return rootCommands[command]
 }
@@ -51,6 +52,7 @@ func PrintHelp() {
 	fmt.Println("")
 
 	fmt.Println("  Tool Management:")
+	fmt.Println("    install-global                            - Install to global environment (/usr/local/bin)")
 	fmt.Println("    version, -v, --version                      - Show version")
 	fmt.Println("    help, -h, --help                            - Show this help")
 	fmt.Println("")
