@@ -9,6 +9,7 @@ import (
 	"autostart/internal/config"
 )
 
+// 检查命令是否需要root权限
 func NeedsRoot(command string) bool {
 	rootCommands := []string{"add", "create", "install", "remove", "rm", "delete", "uninstall", "enable", "disable", "uninstall", "start", "stop", "restart", "edit"}
 	for _, cmd := range rootCommands {
@@ -19,6 +20,7 @@ func NeedsRoot(command string) bool {
 	return false
 }
 
+// 打印帮助信息
 func PrintHelp() {
 	fmt.Printf("%s v%s - Universal Service Autostart Management Tool\n\n", "autostart", "0.0.2")
 	fmt.Println("USAGE:")
@@ -82,6 +84,7 @@ func PrintHelp() {
 	fmt.Printf("  sudo %s restart myapp      # Restart service\n", "autostart")
 }
 
+// 解析添加选项
 func ParseAddOptions(name, execStart string, options []string) (*config.ServiceConfig, error) {
 	cfg := &config.ServiceConfig{
 		Name:         name,
@@ -100,19 +103,24 @@ func ParseAddOptions(name, execStart string, options []string) (*config.ServiceC
 		Wants:        []string{"network.target"},
 		Requires:     []string{},
 	}
+	// 尝试从执行命令中推断工作目录
 	cfg.WorkDir = inferWorkingDirectory(execStart)
+	// 解析选项
 	for _, option := range options {
 		if err := parseOption(cfg, option); err != nil {
 			return nil, err
 		}
 	}
+	// 验证配
 	if err := validateConfig(cfg); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
+// 推断工作目录
 func inferWorkingDirectory(execStart string) string {
+	// 查找可能的文件路径
 	parts := strings.Fields(execStart)
 	if len(parts) > 0 {
 		for _, part := range parts {
@@ -125,12 +133,14 @@ func inferWorkingDirectory(execStart string) string {
 			}
 		}
 	}
+	// 如果没有推断出工作目录，使用当前目录
 	if wd, err := os.Getwd(); err == nil {
 		return wd
 	}
 	return "/tmp"
 }
 
+// 解析单个选项
 func parseOption(cfg *config.ServiceConfig, option string) error {
 	if strings.HasPrefix(option, "--workdir=") {
 		cfg.WorkDir = strings.TrimPrefix(option, "--workdir=")
@@ -190,7 +200,9 @@ func parseOption(cfg *config.ServiceConfig, option string) error {
 	return nil
 }
 
+// 验证配置
 func validateConfig(cfg *config.ServiceConfig) error {
+	// 验证工作目录
 	if cfg.WorkDir != "" {
 		if !filepath.IsAbs(cfg.WorkDir) {
 			abs, err := filepath.Abs(cfg.WorkDir)
@@ -203,20 +215,24 @@ func validateConfig(cfg *config.ServiceConfig) error {
 			return fmt.Errorf("working directory does not exist: %s", cfg.WorkDir)
 		}
 	}
+	// 验证服务名称
 	if cfg.Name == "" {
 		return fmt.Errorf("service name cannot be empty")
 	}
 	if strings.Contains(cfg.Name, " ") {
 		return fmt.Errorf("service name cannot contain spaces")
 	}
+	// 验证执行命令
 	if cfg.ExecStart == "" {
 		return fmt.Errorf("exec start command cannot be empty")
 	}
 	return nil
 }
 
+// 构建服务文件内容
 func BuildServiceContent(cfg *config.ServiceConfig, serviceName string) string {
 	var content strings.Builder
+	// Unit 段
 	content.WriteString("[Unit]\n")
 	content.WriteString(fmt.Sprintf("Description=%s\n", cfg.Description))
 	if len(cfg.After) > 0 {
@@ -229,6 +245,8 @@ func BuildServiceContent(cfg *config.ServiceConfig, serviceName string) string {
 		content.WriteString(fmt.Sprintf("Requires=%s\n", strings.Join(cfg.Requires, " ")))
 	}
 	content.WriteString("\n")
+
+	// Service 段
 	content.WriteString("[Service]\n")
 	content.WriteString("Type=simple\n")
 	content.WriteString(fmt.Sprintf("User=%s\n", cfg.User))
@@ -248,10 +266,12 @@ func BuildServiceContent(cfg *config.ServiceConfig, serviceName string) string {
 	content.WriteString("StandardOutput=journal\n")
 	content.WriteString("StandardError=journal\n")
 	content.WriteString(fmt.Sprintf("SyslogIdentifier=%s\n", serviceName))
+	// 添加环境变量
 	for key, value := range cfg.Env {
 		content.WriteString(fmt.Sprintf("Environment=%s=%s\n", key, value))
 	}
 	content.WriteString("\n")
+	// Install 段
 	content.WriteString("[Install]\n")
 	content.WriteString("WantedBy=multi-user.target\n")
 	return content.String()

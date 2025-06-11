@@ -16,6 +16,7 @@ const (
 )
 
 func Execute() {
+	// 检查操作系统支持
 	fmt.Printf("system：%s \n", runtime.GOOS)
 	if runtime.GOOS != "linux" {
 		fmt.Printf("Error: This tool currently only supports Linux systems (current: %s)\n", runtime.GOOS)
@@ -29,6 +30,7 @@ func Execute() {
 
 	command := os.Args[1]
 
+	// 检查是否有足够权限
 	if utils.NeedsRoot(command) && os.Geteuid() != 0 {
 		fmt.Printf("Error: This operation requires root privileges. Please run with sudo:\n")
 		fmt.Printf("  sudo %s %s\n", os.Args[0], strings.Join(os.Args[1:], " "))
