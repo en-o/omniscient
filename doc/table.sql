@@ -10,5 +10,6 @@ CREATE TABLE `jpid` (
                         `status` int DEFAULT '0' COMMENT '状态[1:启动，0:停止]',
                         `description` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '项目描述',
                         `way` int DEFAULT '2' COMMENT '启动方式[1:docker, 2:jdk]',
+                        `autostart` int DEFAULT '0' COMMENT '自启[0:没有自启, 1:自启]',
                         PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='java项目详情';
