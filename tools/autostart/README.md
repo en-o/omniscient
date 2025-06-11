@@ -6,6 +6,17 @@
 systemd 255 (255.4-1ubuntu8.8)
 systemd 219 (CentOS Linux release 7.9.2009 (Core))
 
+# 注意事项
+1. 必须使用 sudo
+2. 可执行文件写绝对路径
+3. 可执行文件执行命令不允许后台启动，例如：不要使用 `&` 或 `nohup`
+4. 必须设置工作目录，请使用 `--workdir` 参数，即可执行文件所在目录
+
+```shell
+# 安装命令：  add 项目名  可执行文件路径和执行方式  --workdir=执行文件所在目录
+sudo ./autostart add myapp "java -jar /mnt/c/Test/omniscient_test-0.0.1-SNAPSHOT.jar" --workdir=/mnt/c/Test
+```
+
 # 构建
 ## 克隆或下载源码
 git clone <repository-url>
