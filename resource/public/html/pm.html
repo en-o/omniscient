@@ -61,12 +61,6 @@
                 <h5 class="modal-title" id="editModalLabel">编辑项目</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
             </div>
-            <div class="modal-header">
-                <button class="dropdown-item autostart-btn" data-id="${project.id}" data-autostart="${project.autostart}">
-                    <i class="bi bi-${project.autostart === 1 ? 'dash-circle' : 'check-circle'} text-warning"></i>
-                    ${project.autostart === 1 ? '卸载自启' : '注册自启'}
-                </button>
-            </div>
             <div class="modal-body">
                 <form id="editForm">
                     <input type="hidden" id="editPid">

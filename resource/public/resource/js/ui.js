@@ -98,6 +98,10 @@ window.renderProjectList = function(projects) {
                     <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
                         <i class="bi bi-trash"></i> 删除
                     </button></li>
+                   <li><button class="dropdown-item auto-start-btn" data-pid="${project.pid}"  data-autostart="${project.autostart}">
+                      <i class="bi bi-${project.autostart === 1 ? 'dash-circle' : 'check-circle'} text-warning"></i>
+                        ${project.autostart === 1 ? '卸载自启' : '注册自启'}
+                    </button></li> 
                 `;
             }
         } else {
@@ -116,6 +120,7 @@ window.renderProjectList = function(projects) {
             }
 
         }
+
 
         // 添加编辑选项（适用于所有项目类型）
         operationItems += `
@@ -159,6 +164,11 @@ window.renderProjectList = function(projects) {
             <td>
                 <span class="badge ${project.way === 1 ? 'bg-primary' : 'bg-success'}">
                     ${project.way === 1 ? 'docker' : 'jdk'}
+                </span>
+            </td>
+             <td>
+                <span class="badge ${project.autostart === 1 ? 'bg-success' : 'bg-danger'}">
+                    ${project.autostart === 1 ? '自启中' : '待自启'}
                 </span>
             </td>
             <td>
