@@ -16,6 +16,7 @@ cd autostart
 - AMD64: build/<version>/amd64/autostart
 - ARM64: build/<version>/arm64/autostart
 ```shell
+chmod +x autostart
 chmod +x build.sh
 ./build.sh
 ```
