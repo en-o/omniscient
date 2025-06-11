@@ -98,7 +98,7 @@ window.renderProjectList = function(projects) {
                     <li><button class="dropdown-item delete-project-btn text-danger" data-id="${project.id}">
                         <i class="bi bi-trash"></i> 删除
                     </button></li>
-                   <li><button class="dropdown-item auto-start-btn" data-pid="${project.pid}"  data-autostart="${project.autostart}">
+                   <li><button class="dropdown-item auto-start-btn" data-id="${project.id}"  data-autostart="${project.autostart}">
                       <i class="bi bi-${project.autostart === 1 ? 'dash-circle' : 'check-circle'} text-warning"></i>
                         ${project.autostart === 1 ? '卸载自启' : '注册自启'}
                     </button></li> 

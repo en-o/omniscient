@@ -208,8 +208,8 @@ window.setupEventListeners = function () {
                 }
             }
             // 添加自启按钮处理
-            if (e.target.closest('.autostart-btn')) {
-                const button = e.target.closest('.autostart-btn');
+            if (e.target.closest('.auto-start-btn')) {
+                const button = e.target.closest('.auto-start-btn');
                 const id = parseInt(button.getAttribute('data-id'));
                 const currentAutostart = parseInt(button.getAttribute('data-autostart'));
                 const newAutostart = currentAutostart === 1 ? 0 : 1;
