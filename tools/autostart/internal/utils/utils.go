@@ -276,3 +276,11 @@ func BuildServiceContent(cfg *config.ServiceConfig, serviceName string) string {
 	content.WriteString("WantedBy=multi-user.target\n")
 	return content.String()
 }
+
+// 判断是否是 RedHat 系列系统
+func RedHatBased() bool {
+	if _, err := os.Stat("/etc/redhat-release"); err == nil {
+		return true
+	}
+	return false
+}

@@ -185,6 +185,10 @@ func AddAutostartService() {
 	fmt.Printf("  %s enable %s     # Enable autostart on boot\n", ToolName, serviceName)
 	fmt.Printf("  %s start %s      # Start the service now\n", ToolName, serviceName)
 	fmt.Printf("  %s status %s     # Check service status\n", ToolName, serviceName)
+	if utils.RedHatBased() {
+		fmt.Println("Note: On CentOS/RHEL systems, you need to explicitly enable the service:")
+		fmt.Printf("Use 'sudo systemctl enable %s' to enable auto-start\n", serviceName)
+	}
 }
 
 // 创建 systemd 服务

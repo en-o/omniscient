@@ -361,8 +361,20 @@ func uninstallService() error {
 		return fmt.Errorf("failed to reload systemd: %v", err)
 	}
 
+	if isRedHatBased() {
+		fmt.Println("Note: On CentOS/RHEL systems, you need to explicitly enable the service:")
+		fmt.Printf("Use 'sudo systemctl enable %s' to enable auto-start\n", ServiceName)
+	}
 	fmt.Printf("Service %s uninstalled successfully\n", ServiceName)
 	return nil
+}
+
+// 判断是否是 RedHat 系列系统
+func isRedHatBased() bool {
+	if _, err := os.Stat("/etc/redhat-release"); err == nil {
+		return true
+	}
+	return false
 }
 
 // 设置默认配置文件
