@@ -2,7 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -27,25 +28,37 @@ type ServiceConfig struct {
 	Requires     []string          `json:"requires"`      // 必需服务
 }
 
-// 保存服务配置
+// SaveServiceConfig 保存服务配置到文件
 func SaveServiceConfig(config *ServiceConfig) error {
+	if err := os.MkdirAll(ConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
 	configFile := filepath.Join(ConfigDir, config.Name+".json")
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	return ioutil.WriteFile(configFile, data, 0644)
+
+	if err := os.WriteFile(configFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }
 
+// LoadServiceConfig 从文件加载服务配置
 func LoadServiceConfig(name string) (*ServiceConfig, error) {
 	configFile := filepath.Join(ConfigDir, name+".json")
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
+
 	var config ServiceConfig
 	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
 	return &config, nil
 }
