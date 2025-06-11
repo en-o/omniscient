@@ -1,6 +1,10 @@
 # 自启工具
 使用Systemd 服务方式构建自启管理工具
 
+# 已测环境
+> 如果 `systemctl --version` 版本比我的低可能会用不起
+systemd 255 (255.4-1ubuntu8.8)
+systemd 219 (CentOS Linux release 7.9.2009 (Core))
 
 # 构建
 ## 克隆或下载源码
