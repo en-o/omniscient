@@ -34,7 +34,7 @@
 > 3. 默认使用当前目录下的`config.prod.yaml`配置文件
 > 4. 修改配置之后请 `./omniscient sh reload` 重新加载配置文件
 > 5. 安装好之后请使用 `sudo omniscient sh enable` 启用开机自启
-> 6. 查看自启状态请使用 `sudo omniscient sh status` ` Loaded: loaded (/etc/systemd/system/omniscient.service; disabled; preset: enabled)`
+> 6. 查看自启状态请使用 `sudo omniscient sh status` ` Loaded: loaded (/etc/systemd/system/omniscient.service; enabled; preset: enabled)`
 ```shell
 USAGE
     omniscient [command] [arguments]
@@ -125,6 +125,7 @@ gf build
 1. 查看进程`ps -ef | grep  omniscient`
 2. 随编译文件构建一个配置文件使用`--gf.gcfg.file`即修改内部配置文件，如下：
 > config.prod.yaml 参考[config.yaml](manifest/config/config.yaml)
+> echo 输出 PID=$(ss -tlnp | grep ":7777" | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2)
 ```shell
 #!/bin/bash
 
@@ -163,3 +164,6 @@ docker top <容器名称或ID>
 # 查看映射
 docker inspect --format '{{json .Mounts}}' <容器名或ID>
 ```
+
+# 自启备注
+[omniscient.service; enabled; vendor preset: disabled](https://www.yuque.com/tanning/mbquef/zi21spxc6l5nwazh)
