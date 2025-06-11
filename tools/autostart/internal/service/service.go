@@ -1,9 +1,9 @@
 package service
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,254 +15,313 @@ import (
 
 const ToolName = "autostart"
 
-func ListAutostartServices() {
+// ServiceManager 服务管理器
+type ServiceManager struct{}
+
+// NewServiceManager 创建新的服务管理器
+func NewServiceManager() *ServiceManager {
+	return &ServiceManager{}
+}
+
+// ListAutostartServices 列出所有自启服务
+func (sm *ServiceManager) ListAutostartServices() error {
 	fmt.Printf("Autostart Services managed by %s:\n", ToolName)
 	fmt.Println("============================================")
-	cmd := exec.Command("systemctl", "list-unit-files", "--type=service", "--no-pager")
-	output, err := cmd.Output()
+
+	services, err := sm.getAutostartServices()
 	if err != nil {
-		fmt.Printf("Error: Failed to list services: %v\n", err)
-		return
+		return fmt.Errorf("failed to list services: %w", err)
 	}
-	lines := strings.Split(string(output), "\n")
-	found := false
-	fmt.Printf("%-20s %-12s %-12s %-30s\n", "SERVICE", "AUTOSTART", "STATUS", "DESCRIPTION")
-	fmt.Println("--------------------------------------------------------------------------------")
-	for _, line := range lines {
-		if strings.Contains(line, "autostart-") && strings.Contains(line, ".service") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				serviceName := strings.TrimSuffix(parts[0], ".service")
-				serviceName = strings.TrimPrefix(serviceName, "autostart-")
-				autostartStatus := parts[1]
-				statusCmd := exec.Command("systemctl", "is-active", "autostart-"+serviceName)
-				statusOutput, _ := statusCmd.Output()
-				activeStatus := strings.TrimSpace(string(statusOutput))
-				description := getServiceDescription(serviceName)
-				fmt.Printf("%-20s %-12s %-12s %-30s\n", serviceName, autostartStatus, activeStatus, description)
-				found = true
-			}
-		}
-	}
-	if !found {
+
+	if len(services) == 0 {
 		fmt.Println("No autostart services found.")
 		fmt.Println("")
 		fmt.Printf("Create your first service with: sudo %s add <name> <command>\n", ToolName)
-	} else {
-		fmt.Println("")
-		fmt.Println("LEGEND:")
-		fmt.Println("  enabled/disabled - Autostart on boot")
-		fmt.Println("  active/inactive  - Current running status")
-		fmt.Println("")
-		fmt.Printf("Use '%s status <name>' for detailed status\n", ToolName)
-		fmt.Printf("Use '%s logs <name>' to view service logs\n", ToolName)
+		return nil
 	}
-}
 
-func getServiceDescription(serviceName string) string {
-	configFile := filepath.Join(config.ConfigDir, serviceName+".json")
-	if data, err := ioutil.ReadFile(configFile); err == nil {
-		var cfg config.ServiceConfig
-		if json.Unmarshal(data, &cfg) == nil && cfg.Description != "" {
-			if len(cfg.Description) > 28 {
-				return cfg.Description[:25] + "..."
-			}
-			return cfg.Description
-		}
-	}
-	return "-"
-}
+	fmt.Printf("%-20s %-12s %-12s %-30s\n", "SERVICE", "AUTOSTART", "STATUS", "DESCRIPTION")
+	fmt.Println("--------------------------------------------------------------------------------")
 
-func EnableService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: enable <service-name>")
-		return
+	for _, svc := range services {
+		fmt.Printf("%-20s %-12s %-12s %-30s\n",
+			svc.Name, svc.AutostartStatus, svc.ActiveStatus, svc.Description)
 	}
-	serviceName := os.Args[2]
-	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
-	if !serviceExists(serviceName) {
-		fmt.Printf("Error: Service '%s' does not exist\n", serviceName)
-		fmt.Printf("Use '%s list' to see available services\n", ToolName)
-		return
-	}
-	cmd := exec.Command("systemctl", "enable", fullServiceName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error: Failed to enable service: %v\n", err)
-		fmt.Printf("Output: %s\n", string(output))
-		return
-	}
-	fmt.Printf("✓ Service '%s' enabled for autostart on boot\n", serviceName)
-	showServiceBriefStatus(serviceName)
-}
 
-func DisableService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: disable <service-name>")
-		return
-	}
-	serviceName := os.Args[2]
-	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
-	if !serviceExists(serviceName) {
-		fmt.Printf("Error: Service '%s' does not exist\n", serviceName)
-		fmt.Printf("Use '%s list' to see available services\n", ToolName)
-		return
-	}
-	cmd := exec.Command("systemctl", "disable", fullServiceName)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error: Failed to disable service: %v\n", err)
-		fmt.Printf("Output: %s\n", string(output))
-		return
-	}
-	fmt.Printf("✓ Service '%s' disabled from autostart on boot\n", serviceName)
-	fmt.Printf("Note: Service is still running if it was started. Use '%s stop %s' to stop it.\n", ToolName, serviceName)
-	showServiceBriefStatus(serviceName)
-}
-
-func AddAutostartService() {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: add <service-name> <exec-start> [options]")
-		fmt.Println("Example: add myapp \"java -jar /path/to/app.jar\" --workdir=/path/to --user=myuser")
-		return
-	}
-	serviceName := os.Args[2]
-	execStart := os.Args[3]
-	options := os.Args[4:]
-	if serviceExists(serviceName) {
-		fmt.Printf("Error: Service '%s' already exists\n", serviceName)
-		fmt.Printf("Use '%s remove %s' to remove it first, or '%s edit %s' to modify it\n",
-			ToolName, serviceName, ToolName, serviceName)
-		return
-	}
-	configObj, err := utils.ParseAddOptions(serviceName, execStart, options)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
-	if err := os.MkdirAll(config.ConfigDir, 0755); err != nil {
-		fmt.Printf("Error: Failed to create config directory: %v\n", err)
-		return
-	}
-	err = createSystemdService(configObj)
-	if err != nil {
-		fmt.Printf("Error: Failed to create systemd service: %v\n", err)
-		return
-	}
-	err = config.SaveServiceConfig(configObj)
-	if err != nil {
-		fmt.Printf("Warning: Failed to save service config: %v\n", err)
-	}
-	fmt.Printf("✓ Service '%s' added successfully!\n", serviceName)
-	fmt.Printf("  Command: %s\n", configObj.ExecStart)
-	fmt.Printf("  User: %s\n", configObj.User)
-	fmt.Printf("  Working Directory: %s\n", configObj.WorkDir)
-	fmt.Printf("  Restart Policy: %s\n", configObj.Restart)
 	fmt.Println("")
-	fmt.Printf("Next steps:\n")
-	fmt.Printf("  %s enable %s     # Enable autostart on boot\n", ToolName, serviceName)
-	fmt.Printf("  %s start %s      # Start the service now\n", ToolName, serviceName)
-	fmt.Printf("  %s status %s     # Check service status\n", ToolName, serviceName)
-}
+	fmt.Println("LEGEND:")
+	fmt.Println("  enabled/disabled - Autostart on boot")
+	fmt.Println("  active/inactive  - Current running status")
+	fmt.Println("")
+	fmt.Printf("Use '%s status <name>' for detailed status\n", ToolName)
+	fmt.Printf("Use '%s logs <name>' to view service logs\n", ToolName)
 
-func createSystemdService(cfg *config.ServiceConfig) error {
-	serviceName := fmt.Sprintf("autostart-%s", cfg.Name)
-	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", serviceName)
-	serviceContent := utils.BuildServiceContent(cfg, serviceName)
-	err := ioutil.WriteFile(servicePath, []byte(serviceContent), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to create service file: %v", err)
-	}
-	cmd := exec.Command("systemctl", "daemon-reload")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to reload systemd: %v", err)
-	}
 	return nil
 }
 
-func RemoveAutostartService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: remove <service-name>")
-		return
+// ServiceInfo 服务信息
+type ServiceInfo struct {
+	Name            string
+	AutostartStatus string
+	ActiveStatus    string
+	Description     string
+}
+
+// getAutostartServices 获取所有自启服务信息
+func (sm *ServiceManager) getAutostartServices() ([]ServiceInfo, error) {
+	cmd := exec.Command("systemctl", "list-unit-files", "--type=service", "--no-pager")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
 	}
-	serviceName := os.Args[2]
+
+	var services []ServiceInfo
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.Contains(line, "autostart-") || !strings.Contains(line, ".service") {
+			continue
+		}
+
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+
+		serviceName := strings.TrimSuffix(parts[0], ".service")
+		serviceName = strings.TrimPrefix(serviceName, "autostart-")
+		autostartStatus := parts[1]
+
+		activeStatus := sm.getServiceActiveStatus(serviceName)
+		description := sm.getServiceDescription(serviceName)
+
+		services = append(services, ServiceInfo{
+			Name:            serviceName,
+			AutostartStatus: autostartStatus,
+			ActiveStatus:    activeStatus,
+			Description:     description,
+		})
+	}
+
+	return services, scanner.Err()
+}
+
+// getServiceActiveStatus 获取服务激活状态
+func (sm *ServiceManager) getServiceActiveStatus(serviceName string) string {
+	cmd := exec.Command("systemctl", "is-active", "autostart-"+serviceName)
+	output, _ := cmd.Output()
+	return strings.TrimSpace(string(output))
+}
+
+// getServiceDescription 获取服务描述
+func (sm *ServiceManager) getServiceDescription(serviceName string) string {
+	configFile := filepath.Join(config.ConfigDir, serviceName+".json")
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return "-"
+	}
+
+	var cfg config.ServiceConfig
+	if err := json.Unmarshal(data, &cfg); err != nil || cfg.Description == "" {
+		return "-"
+	}
+	// 截断长描述
+	if len(cfg.Description) > 28 {
+		return cfg.Description[:25] + "..."
+	}
+	return cfg.Description
+}
+
+// EnableService 启用服务自启动
+func (sm *ServiceManager) EnableService(serviceName string) error {
+	if !sm.serviceExists(serviceName) {
+		return fmt.Errorf("service '%s' does not exist", serviceName)
+	}
+
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "enable", fullServiceName)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to enable service: %w\nOutput: %s", err, string(output))
+	}
+
+	fmt.Printf("✓ Service '%s' enabled for autostart on boot\n", serviceName)
+	sm.showServiceBriefStatus(serviceName)
+	return nil
+}
+
+// DisableService 禁用服务自启动
+func (sm *ServiceManager) DisableService(serviceName string) error {
+	if !sm.serviceExists(serviceName) {
+		return fmt.Errorf("service '%s' does not exist", serviceName)
+	}
+
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "disable", fullServiceName)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to disable service: %w\nOutput: %s", err, string(output))
+	}
+
+	fmt.Printf("✓ Service '%s' disabled from autostart on boot\n", serviceName)
+	fmt.Printf("Note: Service is still running if it was started. Use '%s stop %s' to stop it.\n", ToolName, serviceName)
+	sm.showServiceBriefStatus(serviceName)
+	return nil
+}
+
+// AddAutostartService 添加自启服务
+func (sm *ServiceManager) AddAutostartService(serviceName, execStart string, options []string) error {
+	if sm.serviceExists(serviceName) {
+		return fmt.Errorf("service '%s' already exists. Use '%s remove %s' to remove it first, or '%s edit %s' to modify it",
+			serviceName, ToolName, serviceName, ToolName, serviceName)
+	}
+
+	configObj, err := utils.ParseAddOptions(serviceName, execStart, options)
+	if err != nil {
+		return fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	if err := sm.createSystemdService(configObj); err != nil {
+		return fmt.Errorf("failed to create systemd service: %w", err)
+	}
+
+	if err := config.SaveServiceConfig(configObj); err != nil {
+		fmt.Printf("Warning: Failed to save service config: %v\n", err)
+	}
+
+	sm.printServiceAddedInfo(configObj)
+	return nil
+}
+
+// printServiceAddedInfo 打印服务添加成功信息
+func (sm *ServiceManager) printServiceAddedInfo(cfg *config.ServiceConfig) {
+	fmt.Printf("✓ Service '%s' added successfully!\n", cfg.Name)
+	fmt.Printf("  Command: %s\n", cfg.ExecStart)
+	fmt.Printf("  User: %s\n", cfg.User)
+	fmt.Printf("  Working Directory: %s\n", cfg.WorkDir)
+	fmt.Printf("  Restart Policy: %s\n", cfg.Restart)
+	fmt.Println("")
+	fmt.Println("Next steps:")
+	fmt.Printf("  %s enable %s     # Enable autostart on boot\n", ToolName, cfg.Name)
+	fmt.Printf("  %s start %s      # Start the service now\n", ToolName, cfg.Name)
+	fmt.Printf("  %s status %s     # Check service status\n", ToolName, cfg.Name)
+}
+
+// createSystemdService 创建systemd服务
+func (sm *ServiceManager) createSystemdService(cfg *config.ServiceConfig) error {
+	serviceName := fmt.Sprintf("autostart-%s", cfg.Name)
+	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", serviceName)
+	// 构建服务文件内容
+	serviceContent := utils.BuildServiceContent(cfg, serviceName)
+	// 写入服务文件
+	if err := os.WriteFile(servicePath, []byte(serviceContent), 0644); err != nil {
+		return fmt.Errorf("failed to create service file: %w", err)
+	}
+	// 重载 systemd
+	cmd := exec.Command("systemctl", "daemon-reload")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to reload systemd: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveAutostartService 移除自启服务
+func (sm *ServiceManager) RemoveAutostartService(serviceName string) error {
 	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", fullServiceName)
+
 	if _, err := os.Stat(servicePath); os.IsNotExist(err) {
-		fmt.Printf("Error: Service '%s' does not exist\n", serviceName)
-		return
+		return fmt.Errorf("service '%s' does not exist", serviceName)
 	}
-	fmt.Printf("Stopping service '%s'...\n", serviceName)
-	stopCmd := exec.Command("systemctl", "stop", fullServiceName)
-	stopCmd.Run()
-	fmt.Printf("Disabling service '%s'...\n", serviceName)
-	disableCmd := exec.Command("systemctl", "disable", fullServiceName)
-	disableCmd.Run()
-	err := os.Remove(servicePath)
-	if err != nil {
-		fmt.Printf("Error: Failed to remove service file: %v\n", err)
-		return
+
+	if !sm.confirmRemoval(serviceName) {
+		fmt.Println("Removal cancelled.")
+		return nil
 	}
-	configFile := fmt.Sprintf("%s/%s.json", config.ConfigDir, serviceName)
-	os.Remove(configFile)
+
+	// 停止并禁用服务
+	sm.stopAndDisableService(fullServiceName)
+
+	// 删除服务文件
+	if err := os.Remove(servicePath); err != nil {
+		return fmt.Errorf("failed to remove service file: %w", err)
+	}
+
+	// 删除配置文件
+	configFile := filepath.Join(config.ConfigDir, serviceName+".json")
+	os.Remove(configFile) // 忽略错误
+
+	// 重载systemd
 	cmd := exec.Command("systemctl", "daemon-reload")
-	err = cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		fmt.Printf("Warning: Failed to reload systemd: %v\n", err)
 	}
+
 	fmt.Printf("✓ Service '%s' removed successfully!\n", serviceName)
+	return nil
 }
 
-func ShowServiceStatus() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: status <service-name>")
-		return
-	}
-	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
-	cmd := exec.Command("systemctl", "status", serviceName)
+// confirmRemoval 确认移除操作
+func (sm *ServiceManager) confirmRemoval(serviceName string) bool {
+	fmt.Printf("This will remove service '%s'. Are you sure? (y/N): ", serviceName)
+
+	var response string
+	fmt.Scanln(&response)
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// stopAndDisableService 停止并禁用服务
+func (sm *ServiceManager) stopAndDisableService(fullServiceName string) {
+	fmt.Printf("Stopping service...\n")
+	stopCmd := exec.Command("systemctl", "stop", fullServiceName)
+	stopCmd.Run() // 忽略错误
+
+	fmt.Printf("Disabling service...\n")
+	disableCmd := exec.Command("systemctl", "disable", fullServiceName)
+	disableCmd.Run() // 忽略错误
+}
+
+// ShowServiceStatus 显示服务状态
+func (sm *ServiceManager) ShowServiceStatus(serviceName string) error {
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "status", fullServiceName)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	return cmd.Run()
 }
 
-func ShowServiceLogs() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: logs <service-name> [lines]")
-		return
+// ShowServiceLogs 显示服务日志
+func (sm *ServiceManager) ShowServiceLogs(serviceName string, lines string) error {
+	if lines == "" {
+		lines = "50"
 	}
-	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
-	lines := "50"
-	if len(os.Args) >= 4 {
-		lines = os.Args[3]
-	}
-	cmd := exec.Command("journalctl", "-u", serviceName, "-n", lines, "--no-pager")
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("journalctl", "-u", fullServiceName, "-n", lines, "--no-pager")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	return cmd.Run()
 }
 
-func EditService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: edit <service-name>")
-		return
-	}
-	serviceName := os.Args[2]
-	configFile := fmt.Sprintf("%s/%s.json", config.ConfigDir, serviceName)
+// EditService 编辑服务配置
+func (sm *ServiceManager) EditService(serviceName string) error {
+	configFile := filepath.Join(config.ConfigDir, serviceName+".json")
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		fmt.Printf("Error: Service '%s' configuration not found\n", serviceName)
-		return
+		return fmt.Errorf("service '%s' configuration not found", serviceName)
 	}
-	data, err := ioutil.ReadFile(configFile)
+
+	cfg, err := config.LoadServiceConfig(serviceName)
 	if err != nil {
-		fmt.Printf("Error: Failed to read config file: %v\n", err)
-		return
+		return fmt.Errorf("failed to load service config: %w", err)
 	}
-	var cfg config.ServiceConfig
-	err = json.Unmarshal(data, &cfg)
-	if err != nil {
-		fmt.Printf("Error: Failed to parse config file: %v\n", err)
-		return
-	}
+
+	sm.printCurrentConfig(serviceName, cfg)
+	return nil
+}
+
+// printCurrentConfig 打印当前配置
+func (sm *ServiceManager) printCurrentConfig(serviceName string, cfg *config.ServiceConfig) {
 	fmt.Printf("Current configuration for service '%s':\n", serviceName)
 	fmt.Printf("Description: %s\n", cfg.Description)
 	fmt.Printf("ExecStart: %s\n", cfg.ExecStart)
@@ -270,12 +329,15 @@ func EditService() {
 	fmt.Printf("User: %s\n", cfg.User)
 	fmt.Printf("Restart: %s\n", cfg.Restart)
 	fmt.Printf("RestartSec: %d\n", cfg.RestartSec)
+
 	if len(cfg.Env) > 0 {
 		fmt.Println("Environment Variables:")
 		for k, v := range cfg.Env {
 			fmt.Printf("  %s=%s\n", k, v)
 		}
 	}
+
+	configFile := filepath.Join(config.ConfigDir, serviceName+".json")
 	fmt.Println("\nTo modify the configuration, edit the JSON file directly:")
 	fmt.Printf("  sudo nano %s\n", configFile)
 	fmt.Println("\nAfter editing, recreate the service:")
@@ -283,74 +345,63 @@ func EditService() {
 	fmt.Printf("  sudo %s add %s \"<new-exec-start>\" [new-options]\n", ToolName, serviceName)
 }
 
-func StartService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: start <service-name>")
-		return
+// StartService 启动服务
+func (sm *ServiceManager) StartService(serviceName string) error {
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "start", fullServiceName)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to start service: %w", err)
 	}
-	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
-	cmd := exec.Command("systemctl", "start", serviceName)
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("Error: Failed to start service: %v\n", err)
-		return
-	}
-	fmt.Printf("✓ Service '%s' started successfully!\n", os.Args[2])
+
+	fmt.Printf("✓ Service '%s' started successfully!\n", serviceName)
 	fmt.Println("\nCurrent status:")
-	statusCmd := exec.Command("systemctl", "is-active", serviceName)
-	output, _ := statusCmd.Output()
-	status := strings.TrimSpace(string(output))
+	status := sm.getServiceActiveStatus(serviceName)
 	fmt.Printf("Status: %s\n", status)
+	return nil
 }
 
-func StopService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: stop <service-name>")
-		return
+// StopService 停止服务
+func (sm *ServiceManager) StopService(serviceName string) error {
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "stop", fullServiceName)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to stop service: %w", err)
 	}
-	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
-	cmd := exec.Command("systemctl", "stop", serviceName)
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("Error: Failed to stop service: %v\n", err)
-		return
-	}
-	fmt.Printf("✓ Service '%s' stopped successfully!\n", os.Args[2])
+
+	fmt.Printf("✓ Service '%s' stopped successfully!\n", serviceName)
+	return nil
 }
 
-func RestartService() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: restart <service-name>")
-		return
+// RestartService 重启服务
+func (sm *ServiceManager) RestartService(serviceName string) error {
+	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+	cmd := exec.Command("systemctl", "restart", fullServiceName)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to restart service: %w", err)
 	}
-	serviceName := fmt.Sprintf("autostart-%s", os.Args[2])
-	cmd := exec.Command("systemctl", "restart", serviceName)
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("Error: Failed to restart service: %v\n", err)
-		return
-	}
-	fmt.Printf("✓ Service '%s' restarted successfully!\n", os.Args[2])
+
+	fmt.Printf("✓ Service '%s' restarted successfully!\n", serviceName)
 	fmt.Println("\nCurrent status:")
-	statusCmd := exec.Command("systemctl", "is-active", serviceName)
-	output, _ := statusCmd.Output()
-	status := strings.TrimSpace(string(output))
+	status := sm.getServiceActiveStatus(serviceName)
 	fmt.Printf("Status: %s\n", status)
+	return nil
 }
 
-func serviceExists(serviceName string) bool {
+// serviceExists 检查服务是否存在
+func (sm *ServiceManager) serviceExists(serviceName string) bool {
 	servicePath := fmt.Sprintf("/etc/systemd/system/autostart-%s.service", serviceName)
 	_, err := os.Stat(servicePath)
 	return err == nil
 }
 
-func showServiceBriefStatus(serviceName string) {
+// showServiceBriefStatus 显示服务简要状态
+func (sm *ServiceManager) showServiceBriefStatus(serviceName string) {
 	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
+
 	enabledCmd := exec.Command("systemctl", "is-enabled", fullServiceName)
 	enabledOutput, _ := enabledCmd.Output()
 	enabledStatus := strings.TrimSpace(string(enabledOutput))
-	activeCmd := exec.Command("systemctl", "is-active", fullServiceName)
-	activeOutput, _ := activeCmd.Output()
-	activeStatus := strings.TrimSpace(string(activeOutput))
+
+	activeStatus := sm.getServiceActiveStatus(serviceName)
 	fmt.Printf("Current status: autostart=%s, running=%s\n", enabledStatus, activeStatus)
 }
