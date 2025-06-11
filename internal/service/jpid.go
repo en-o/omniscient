@@ -313,3 +313,57 @@ func (s *SJpid) Delete(ctx context.Context, id int) error {
 	_, err = dao.Jpid.Ctx(ctx).Where("id", id).Delete()
 	return err
 }
+
+// UpdateAutostart 更新自启状态并处理自启服务
+func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) error {
+	// 获取项目信息
+	var jpid *entity.Jpid
+	err := dao.Jpid.Ctx(ctx).Where("id", id).Scan(&jpid)
+	if err != nil {
+		return err
+	}
+	if jpid == nil {
+		return gerror.New("项目不存在")
+	}
+
+	// 检查autostart命令是否存在
+	if !isAutostartInstalled() {
+		return gerror.New("请先安装autostart并设置环境变量:\n" +
+			"1. sudo apt install autostart\n" +
+			"2. echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc\n" +
+			"3. source ~/.bashrc")
+	}
+
+	if autostart == 1 {
+		// 注册自启
+		cmd := exec.Command("sudo", "autostart", "add", jpid.Name, jpid.Catalog)
+		if err := cmd.Run(); err != nil {
+			return gerror.Wrapf(err, "注册自启服务失败")
+		}
+
+		// 启用自启
+		cmd = exec.Command("sudo", "autostart", "enable", jpid.Name)
+		if err := cmd.Run(); err != nil {
+			return gerror.Wrapf(err, "启用自启服务失败")
+		}
+	} else {
+		// 移除自启
+		cmd := exec.Command("sudo", "autostart", "rm", jpid.Name)
+		if err := cmd.Run(); err != nil {
+			return gerror.Wrapf(err, "移除自启服务失败")
+		}
+	}
+
+	// 更新数据库
+	_, err = dao.Jpid.Ctx(ctx).Data(g.Map{
+		"autostart": autostart,
+	}).Where("id", id).Update()
+
+	return err
+}
+
+// 检查autostart命令是否安装
+func isAutostartInstalled() bool {
+	cmd := exec.Command("which", "autostart")
+	return cmd.Run() == nil
+}

@@ -7,7 +7,8 @@ const API_ENDPOINTS = {
     START_SCRIPT: '/jpid/start/script/',
     START_DOCKER: '/jpid/start/docker/',
     DELETE: '/jpid/delete/',
-    UPDATE: '/jpid/update/'
+    UPDATE: '/jpid/update/',
+    AUTOSTART: '/jpid/autostart/'
 };
 
 const AUTO_REGISTER_INTERVAL = 60000; // 60秒
@@ -661,4 +662,28 @@ window.handleDockerRequest = function(pid, reset=false) {
     });
 };
 
+
+
+// 添加更新自启状态的函数
+window.updateAutostart = async function(id, autostart) {
+    try {
+        const result = await window.apiRequest(
+            `${API_ENDPOINTS.AUTOSTART}${id}`,
+            'POST',
+            {autostart}
+        );
+
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(result.message);
+        }
+
+        if (typeof window.fetchProjects === 'function') {
+            await window.fetchProjects();
+        }
+    } catch (error) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`操作失败：${error.message}`, 'danger');
+        }
+    }
+};
 

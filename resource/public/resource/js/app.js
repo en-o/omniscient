@@ -188,7 +188,7 @@ window.setupEventListeners = function () {
                 const button = e.target.closest('.delete-project-btn');
                 const id = button.getAttribute('data-id');
                 if (typeof window.deleteProject === 'function') {
-                    window.deleteProject(parseInt(id)); // Ensure ID is a number
+                    window.deleteProject(parseInt(id)).then(r => {}); // Ensure ID is a number
                 } else {
                     console.error("deleteProject function not available.");
                 }
@@ -205,6 +205,19 @@ window.setupEventListeners = function () {
                     window.showEditModal(pid, script, catalog, description);
                 } else {
                     console.error("showEditModal function not available.");
+                }
+            }
+            // 添加自启按钮处理
+            if (e.target.closest('.autostart-btn')) {
+                const button = e.target.closest('.autostart-btn');
+                const id = parseInt(button.getAttribute('data-id'));
+                const currentAutostart = parseInt(button.getAttribute('data-autostart'));
+                const newAutostart = currentAutostart === 1 ? 0 : 1;
+
+                if (typeof window.updateAutostart === 'function') {
+                    window.updateAutostart(id, newAutostart).then(r => {});
+                } else {
+                    console.error("updateAutostart function not available.");
                 }
             }
         });
