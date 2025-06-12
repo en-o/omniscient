@@ -351,7 +351,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			if jpid.Script == "" {
 				execStr = "'" + jpid.Run + "'"
 			} else {
-				execStr = "'" + jpid.Script + " -b false" + "'"
+				execStr = jpid.Script + " -b false"
 			}
 
 			g.Log().Info(ctx, "添加自启服务", "execStr", execStr)
