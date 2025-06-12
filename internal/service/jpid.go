@@ -402,31 +402,20 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 
 // checkAutostartServiceExists 检查autostart服务是否存在
 func checkAutostartServiceExists(ctx context.Context, autoName string) bool {
-	cmd := exec.Command("autostart", "status", autoName)
-	err := cmd.Run()
-
+	cmd := exec.Command("autostart", "exists", autoName)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode := exitError.ExitCode()
-			g.Log().Debug(ctx, "检查自启服务状态",
-				"autoName", autoName,
-				"exitCode", exitCode,
-			)
-			// exit status 4 表示服务不存在
-			// exit status 3 表示服务存在但未运行
-			// exit status 0 表示服务存在且运行中
-			return exitCode != 4
-		}
-		// 其他错误，假设服务不存在
-		g.Log().Warning(ctx, "检查自启服务状态时发生未知错误",
+		g.Log().Debug(ctx, "检查自启服务状态",
 			"autoName", autoName,
 			"error", err,
+			"output", string(output),
 		)
+		// 如果命令执行失败，说明服务不存在
 		return false
 	}
 
-	// 命令执行成功，服务存在
-	return true
+	// 检查输出中是否包含 "Service 'xxx' exists"
+	return strings.Contains(string(output), "Service '"+autoName+"' exists")
 }
 
 // 检查autostart命令是否安装
