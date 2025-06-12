@@ -163,14 +163,13 @@ window.renderProjectList = function(projects) {
                 </span>
             </td>
             <td>
-                <span class="badge ${project.autostart === 1 ? 'bg-success' : 'bg-danger'} autostart-status-btn" 
-                      data-id="${project.id}" 
-                      data-autostart="${project.autostart}"
-                      style="cursor: pointer;"
-                      data-bs-toggle="tooltip" 
-                      title="点击${project.autostart === 1 ? '卸载' : '注册'}自启">
-                    <i class="bi bi-${project.autostart === 1 ? 'check-circle' : 'dash-circle'} me-1"></i>
-                    ${project.autostart === 1 ? '自启中' : '待自启'}
+                <span class="badge ${project.way === 1 ? 'bg-secondary' : (project.autostart === 1 ? 'bg-success' : 'bg-danger')} ${project.way === 1 ? '' : 'autostart-status-btn'}"
+                      ${project.way === 1 ? '' : `data-id="${project.id}" data-autostart="${project.autostart}"`}
+                      style="cursor: ${project.way === 1 ? 'not-allowed' : 'pointer'};"
+                      data-bs-toggle="tooltip"
+                      title="${project.way === 1 ? 'Docker方式运行不支持自启' : `点击${project.autostart === 1 ? '卸载' : '注册'}自启`}">
+                    <i class="bi bi-${project.way === 1 ? 'dash-circle' : (project.autostart === 1 ? 'check-circle' : 'dash-circle')} me-1"></i>
+                    ${project.way === 1 ? '不支持' : (project.autostart === 1 ? '自启中' : '待自启')}
                 </span>
             </td>
             <td>
