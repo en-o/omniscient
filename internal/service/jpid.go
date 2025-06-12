@@ -349,7 +349,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			var execStr string
 			// 使用单引号包裹整个命令
 			if jpid.Script == "" {
-				execStr = "'" + jpid.Run + "'"
+				execStr = jpid.Run
 			} else {
 				execStr = jpid.Script + " -b false"
 			}
