@@ -310,9 +310,13 @@ window.showAutostartConfirmModal = function(id, newAutostart, projectName, proje
     if (nameElement) nameElement.textContent = projectName;
     if (descriptionElement) descriptionElement.textContent = projectDescription || '无描述';
     if (noteElement) {
-        noteElement.textContent = isRegister
+        const baseMessage = isRegister
             ? '注册自启后，项目将在系统启动时自动运行。'
             : '卸载自启后，项目将不再在系统启动时自动运行。';
+        const additionalInfo = isRegister
+            ? '<br>(请确保autostart环境正确安装 <a href="https://gitee.com/tanoo/omniscient/blob/master/tools/autostart/README.md#%E5%85%A8%E5%B1%80%E7%8E%AF%E5%A2%83%E8%AE%BE%E7%BD%AE" target="_blank">查看安装指南</a>)'
+            : '';
+        noteElement.innerHTML = `${baseMessage}${additionalInfo}`;
     }
     if (confirmButton) {
         confirmButton.textContent = `确认${actionText}`;
