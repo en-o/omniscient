@@ -363,7 +363,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			}
 
 			// 注册自启（使用改进的命令执行函数）
-			err := execCommand(ctx, "autostart", "add", autoName, execStr,
+			err := system.ExecCommand(ctx, "autostart", "add", autoName, execStr,
 				"--workdir="+jpid.Catalog, "--description="+description)
 			if err != nil {
 				return gerror.Wrap(err, "注册自启服务失败")
@@ -371,7 +371,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		}
 
 		// 启用自启（无论服务是否已存在都需要确保启用）
-		err := execCommand(ctx, "autostart", "enable", autoName)
+		err := system.ExecCommand(ctx, "autostart", "enable", autoName)
 		if err != nil {
 			return gerror.Wrap(err, "启用自启服务失败")
 		}
@@ -416,7 +416,7 @@ func (s *SJpid) removeAutostartServiceNonInteractive(ctx context.Context, autoNa
 			"error", err, "output", string(output))
 
 		// 方法2: 直接禁用服务
-		err3 := execSudoCommand(ctx, "autostart", "disable", autoName)
+		err3 := system.ExecCommand(ctx, "autostart", "disable", autoName)
 		if err3 != nil {
 			return gerror.Wrapf(err, "所有移除方法都失败了，原始错误: %v", err)
 		}
@@ -482,62 +482,4 @@ func isAutostartInstalled() bool {
 		return false
 	}
 	return true
-}
-
-// checkSudoNoPassword 检查是否可以无密码执行sudo命令
-func checkSudoNoPassword(command string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "sudo", "-n", command, "--help")
-	if err := cmd.Run(); err != nil {
-		return gerror.New("无法无密码执行sudo命令，请配置sudo免密:\n" +
-			"1. 执行: sudo visudo\n" +
-			"2. 添加: " + getCurrentUser() + " ALL=(ALL) NOPASSWD: /*/autostart\n" +
-			"3. 保存并退出")
-	}
-	return nil
-}
-
-// getCurrentUser 获取当前用户名
-func getCurrentUser() string {
-	cmd := exec.Command("whoami")
-	output, err := cmd.Output()
-	if err != nil {
-		return "username" // 默认值
-	}
-	return strings.TrimSpace(string(output))
-}
-
-// execSudoCommand 执行命令，带超时和错误处理
-func execCommand(ctx context.Context, args ...string) error {
-	cmdCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdCtx, args[0], args[1:]...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return gerror.Wrapf(err, "执行命令失败: %s, 输出: %s",
-			strings.Join(args, " "), string(output))
-	}
-	return nil
-}
-
-// execSudoCommand 执行sudo命令，带超时和错误处理
-func execSudoCommand(ctx context.Context, args ...string) error {
-	// 设置命令超时
-	cmdCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	// 构建完整的sudo命令
-	fullArgs := append([]string{"sudo", "-n"}, args...)
-	cmd := exec.CommandContext(cmdCtx, fullArgs[0], fullArgs[1:]...)
-
-	// 执行命令并获取输出
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return gerror.Wrapf(err, "执行sudo命令失败: %s, 输出: %s", strings.Join(args, " "), string(output))
-	}
-
-	return nil
 }
