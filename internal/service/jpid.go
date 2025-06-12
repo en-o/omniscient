@@ -325,12 +325,10 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	if jpid == nil {
 		return gerror.New("项目不存在")
 	}
-
 	// 判断是否为 docker 方式运行
 	if jpid.Way == 1 {
 		return gerror.New("docker 方式运行的项目不支持设置自启动")
 	}
-
 	// 检查autostart命令是否存在
 	if !isAutostartInstalled() {
 		return gerror.New("请先安装autostart并设置环境变量:\n" +
@@ -339,30 +337,37 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	}
 
 	var autoName = jpid.Name + "_" + jpid.Ports
-
 	g.Log().Info(ctx, "更新自启状态并处理自启服务",
 		"pid", jpid.Pid,
 		"autoName", autoName,
 	)
 
+	// 检查服务是否已存在
+	serviceExists := checkAutostartServiceExists(ctx, autoName)
+
 	if autostart == 1 {
-		var execStr = jpid.Script
-		if jpid.Script == "" {
-			execStr = jpid.Run
+		// 如果服务已存在，先记录日志
+		if serviceExists {
+			g.Log().Info(ctx, "自启服务已存在，跳过添加", "autoName", autoName)
 		} else {
-			execStr = jpid.Catalog + "/" + jpid.Script + " -b false"
-		}
-		g.Log().Info(ctx, "自启命令",
-			"execStr", execStr,
-		)
-		// 注册自启
-		cmd := exec.Command("sudo", "autostart", "add", autoName, execStr, "--workdir="+jpid.Catalog, "--description="+jpid.Description)
-		if err := cmd.Run(); err != nil {
-			return gerror.Wrapf(err, "注册自启服务失败")
+			// 服务不存在，添加新服务
+			var execStr = jpid.Script
+			if jpid.Script == "" {
+				execStr = jpid.Run
+			} else {
+				execStr = jpid.Catalog + "/" + jpid.Script + " -b false"
+			}
+			g.Log().Info(ctx, "添加自启服务", "execStr", execStr)
+
+			// 注册自启
+			cmd := exec.Command("sudo", "autostart", "add", autoName, execStr, "--workdir="+jpid.Catalog, "--description="+jpid.Description)
+			if err := cmd.Run(); err != nil {
+				return gerror.Wrapf(err, "注册自启服务失败")
+			}
 		}
 
-		// 启用自启
-		cmd = exec.Command("sudo", "autostart", "enable", autoName)
+		// 启用自启（无论服务是否已存在都需要确保启用）
+		cmd := exec.Command("sudo", "autostart", "enable", autoName)
 		if err := cmd.Run(); err != nil {
 			return gerror.Wrapf(err, "启用自启服务失败")
 		}
@@ -371,20 +376,20 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		cmd = exec.Command("sudo", "autostart", "ls")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			g.Log().Warning(ctx, "获取自启动服务列表失败",
-				"error", err,
-			)
+			g.Log().Warning(ctx, "获取自启动服务列表失败", "error", err)
 		} else {
-			g.Log().Info(ctx, "当前自启动服务列表",
-				"output", string(output),
-			)
+			g.Log().Info(ctx, "当前自启动服务列表", "output", string(output))
 		}
 	} else {
 		// 移除自启
-		// 通过将 echo 'y' 通过管道传递给 autostart 命令来实现自动确认
-		cmd := exec.Command("bash", "-c", "echo 'y' | sudo autostart rm "+autoName)
-		if err := cmd.Run(); err != nil {
-			return gerror.Wrapf(err, "移除自启服务失败")
+		if serviceExists {
+			// 通过将 echo 'y' 通过管道传递给 autostart 命令来实现自动确认
+			cmd := exec.Command("bash", "-c", "echo 'y' | sudo autostart rm "+autoName)
+			if err := cmd.Run(); err != nil {
+				return gerror.Wrapf(err, "移除自启服务失败")
+			}
+		} else {
+			g.Log().Info(ctx, "自启服务不存在，跳过移除", "autoName", autoName)
 		}
 	}
 
@@ -392,8 +397,36 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	_, err = dao.Jpid.Ctx(ctx).Data(g.Map{
 		"autostart": autostart,
 	}).Where("id", id).Update()
-
 	return err
+}
+
+// checkAutostartServiceExists 检查autostart服务是否存在
+func checkAutostartServiceExists(ctx context.Context, autoName string) bool {
+	cmd := exec.Command("autostart", "status", autoName)
+	err := cmd.Run()
+
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			exitCode := exitError.ExitCode()
+			g.Log().Debug(ctx, "检查自启服务状态",
+				"autoName", autoName,
+				"exitCode", exitCode,
+			)
+			// exit status 4 表示服务不存在
+			// exit status 3 表示服务存在但未运行
+			// exit status 0 表示服务存在且运行中
+			return exitCode != 4
+		}
+		// 其他错误，假设服务不存在
+		g.Log().Warning(ctx, "检查自启服务状态时发生未知错误",
+			"autoName", autoName,
+			"error", err,
+		)
+		return false
+	}
+
+	// 命令执行成功，服务存在
+	return true
 }
 
 // 检查autostart命令是否安装
