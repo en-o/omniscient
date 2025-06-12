@@ -326,6 +326,11 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		return gerror.New("项目不存在")
 	}
 
+	// 判断是否为 docker 方式运行
+	if jpid.Way == 1 {
+		return gerror.New("docker 方式运行的项目不支持设置自启动")
+	}
+
 	// 检查autostart命令是否存在
 	if !isAutostartInstalled() {
 		return gerror.New("请先安装autostart并设置环境变量:\n" +
@@ -333,21 +338,51 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			"2. sudo ./autostart install-global\n")
 	}
 
+	var autoName = jpid.Name + "_" + jpid.Ports
+
+	g.Log().Info(ctx, "更新自启状态并处理自启服务",
+		"pid", jpid.Pid,
+		"autoName", autoName,
+	)
+
 	if autostart == 1 {
+		var execStr = jpid.Script
+		if jpid.Script == "" {
+			execStr = jpid.Run
+		} else {
+			execStr = jpid.Catalog + "/" + jpid.Script + " -b false"
+		}
+		g.Log().Info(ctx, "自启命令",
+			"execStr", execStr,
+		)
 		// 注册自启
-		cmd := exec.Command("sudo", "autostart", "add", jpid.Name, jpid.Catalog)
+		cmd := exec.Command("sudo", "autostart", "add", autoName, execStr, "--workdir="+jpid.Catalog, "--description="+jpid.Description)
 		if err := cmd.Run(); err != nil {
 			return gerror.Wrapf(err, "注册自启服务失败")
 		}
 
 		// 启用自启
-		cmd = exec.Command("sudo", "autostart", "enable", jpid.Name)
+		cmd = exec.Command("sudo", "autostart", "enable", autoName)
 		if err := cmd.Run(); err != nil {
 			return gerror.Wrapf(err, "启用自启服务失败")
 		}
+
+		// 获取自启动服务列表
+		cmd = exec.Command("sudo", "autostart", "ls")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			g.Log().Warning(ctx, "获取自启动服务列表失败",
+				"error", err,
+			)
+		} else {
+			g.Log().Info(ctx, "当前自启动服务列表",
+				"output", string(output),
+			)
+		}
 	} else {
 		// 移除自启
-		cmd := exec.Command("sudo", "autostart", "rm", jpid.Name)
+		// 通过将 echo 'y' 通过管道传递给 autostart 命令来实现自动确认
+		cmd := exec.Command("bash", "-c", "echo 'y' | sudo autostart rm "+autoName)
 		if err := cmd.Run(); err != nil {
 			return gerror.Wrapf(err, "移除自启服务失败")
 		}
