@@ -346,18 +346,25 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		// 启用自启
 		if !serviceExists {
 			// 服务不存在，添加新服务
-			var execStr = jpid.Script
+			var execStr string
+			// 使用单引号包裹整个命令
 			if jpid.Script == "" {
-				execStr = jpid.Run
+				execStr = "'" + jpid.Run + "'"
 			} else {
-				execStr = jpid.Catalog + "/" + jpid.Script + " -b false"
+				execStr = "'" + jpid.Script + " -b false" + "'"
 			}
 
 			g.Log().Info(ctx, "添加自启服务", "execStr", execStr)
 
+			// 获取description,如果为空设置默认值
+			description := jpid.Description
+			if description == "" {
+				description = "Service for " + jpid.Name
+			}
+
 			// 注册自启（使用改进的命令执行函数）
 			err := execCommand(ctx, "autostart", "add", autoName, execStr,
-				"--workdir="+jpid.Catalog, "--description="+jpid.Description)
+				"--workdir="+jpid.Catalog, "--description="+description)
 			if err != nil {
 				return gerror.Wrap(err, "注册自启服务失败")
 			}
