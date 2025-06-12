@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gogf/gf/v2/frame/g"
 	_ "omniscient/internal/packed"
 	"os"
 
@@ -19,6 +20,7 @@ func main() {
 
 	// 直接处理命令路由，不使用 GoFrame 的复杂命令系统
 	if len(args) <= 1 {
+		printWelcomeInfo(ctx)
 		// 没有参数时默认运行 run 命令
 		cmd.Main.Run(ctx)
 		return
@@ -27,11 +29,18 @@ func main() {
 	// 手动处理命令路由
 	switch args[1] {
 	case "run":
-		// 运行服务器
-		cmd.Run.Func(ctx, nil)
+		printWelcomeInfo(ctx)
+		err := cmd.Run.Func(ctx, nil)
+		if err != nil {
+			g.Log().Error(ctx, "运行服务器失败=========================")
+			return
+		}
 	case "sh":
 		// 服务管理命令
-		cmd.Shell.Func(ctx, nil)
+		err := cmd.Shell.Func(ctx, nil)
+		if err != nil {
+			return
+		}
 	default:
 		// 使用 GoFrame 命令系统作为备用
 		command := gcmd.Command{
@@ -62,7 +71,26 @@ Examples:
 		}
 
 		// 添加子命令
-		command.AddCommand(&cmd.Run, &cmd.Shell)
+		err := command.AddCommand(&cmd.Run, &cmd.Shell)
+		if err != nil {
+			g.Log().Error(ctx, "子命令运行失败=========================")
+			return
+		}
 		command.Run(ctx)
 	}
+}
+
+// printWelcomeInfo 打印欢迎信息
+func printWelcomeInfo(ctx g.Ctx) {
+	port := g.Cfg().MustGet(ctx, "server.address").String()
+	if port == "" {
+		port = ":8000"
+	}
+	if port[0] == ':' {
+		port = port[1:]
+	}
+	g.Log().Info(ctx, "===================================")
+	g.Log().Info(ctx, "欢迎使用项目管理系统")
+	g.Log().Info(ctx, "后台管理地址: http://localhost:"+port+"/html/pm.html")
+	g.Log().Info(ctx, "===================================")
 }
