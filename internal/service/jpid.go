@@ -8,6 +8,7 @@ import (
 	"omniscient/internal/dao"
 	"omniscient/internal/model/do"
 	"omniscient/internal/model/entity"
+	"omniscient/internal/util/autostart"
 	"omniscient/internal/util/javaprocess"
 	"omniscient/internal/util/system"
 	"os/exec"
@@ -265,7 +266,7 @@ func portListsMatch(ports1, ports2 []string) bool {
 	return false
 }
 
-// 在 internal/service/jpid.go 中添加 Stop 方法的优化
+// Stop 在 internal/service/jpid.go 中添加 Stop 方法的优化
 func (s *SJpid) Stop(ctx context.Context, pid int) error {
 	// 先尝试使用 SIGTERM 信号优雅终止
 	cmd := exec.Command("kill", "-15", fmt.Sprintf("%d", pid))
@@ -286,7 +287,7 @@ func (s *SJpid) Stop(ctx context.Context, pid int) error {
 	return nil
 }
 
-// 添加检查进程是否运行的辅助方法
+// IsProcessRunning 添加检查进程是否运行的辅助方法
 func (s *SJpid) IsProcessRunning(pid int) bool {
 	cmd := exec.Command("kill", "-0", fmt.Sprintf("%d", pid))
 	return cmd.Run() == nil
@@ -315,7 +316,7 @@ func (s *SJpid) Delete(ctx context.Context, id int) error {
 }
 
 // UpdateAutostart 更新自启状态并处理自启服务
-func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) error {
+func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostartType int) error {
 	// 获取项目信息
 	var jpid *entity.Jpid
 	err := dao.Jpid.Ctx(ctx).Where("id", id).Scan(&jpid)
@@ -332,17 +333,17 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	}
 
 	// 检查autostart命令是否存在
-	if !isAutostartInstalled() {
+	if !autostart.IsAutostartInstalled() {
 		return gerror.New("请先安装autostart并设置环境变量")
 	}
 
 	var autoName = jpid.Name + "_" + jpid.Ports
-	g.Log().Info(ctx, "更新自启状态", "pid", jpid.Pid, "autoName", autoName, "autostart", autostart)
+	g.Log().Info(ctx, "更新自启状态", "pid", jpid.Pid, "autoName", autoName, "autostart", autostartType)
 
 	// 检查服务是否已存在
-	serviceExists := checkAutostartServiceExists(ctx, autoName)
+	serviceExists := autostart.CheckAutostartServiceExists(ctx, autoName)
 
-	if autostart == 1 {
+	if autostartType == 1 {
 		// 启用自启
 		if !serviceExists {
 			// 服务不存在，添加新服务
@@ -397,7 +398,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 
 	// 更新数据库
 	_, err = dao.Jpid.Ctx(ctx).Data(g.Map{
-		"autostart": autostart,
+		"autostart": autostartType,
 	}).Where("id", id).Update()
 	return err
 }
@@ -441,45 +442,4 @@ func (s *SJpid) verifyAutostartService(ctx context.Context, autoName string) err
 	}
 
 	return nil
-}
-
-// checkAutostartServiceExists 检查autostart服务是否存在
-func checkAutostartServiceExists(ctx context.Context, autoName string) bool {
-	cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdCtx, "autostart", "exists", autoName)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		g.Log().Debug(ctx, "检查自启服务状态",
-			"autoName", autoName, "error", err, "output", string(output))
-		return false
-	}
-
-	// 检查输出中是否包含确认信息
-	return strings.Contains(string(output), "Service '"+autoName+"' exists") ||
-		strings.Contains(string(output), autoName)
-}
-
-// 检查autostart命令是否安装
-func isAutostartInstalled() bool {
-	cmd := exec.Command("which", "autostart")
-	err := cmd.Run()
-	if err != nil {
-		// 也尝试检查常见安装路径
-		paths := []string{
-			"/usr/local/bin/autostart",
-			"/usr/bin/autostart",
-			"/opt/autostart/bin/autostart",
-		}
-
-		for _, path := range paths {
-			if cmd := exec.Command("test", "-x", path); cmd.Run() == nil {
-				return true
-			}
-		}
-		return false
-	}
-	return true
 }
