@@ -325,31 +325,31 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	if jpid == nil {
 		return gerror.New("项目不存在")
 	}
+
 	// 判断是否为 docker 方式运行
 	if jpid.Way == 1 {
 		return gerror.New("docker 方式运行的项目不支持设置自启动")
 	}
+
 	// 检查autostart命令是否存在
 	if !isAutostartInstalled() {
-		return gerror.New("请先安装autostart并设置环境变量:\n" +
-			"1. 下载 autostart\n" +
-			"2. sudo ./autostart install-global\n")
+		return gerror.New("请先安装autostart并设置环境变量")
+	}
+
+	// 检查sudo免密配置
+	if err := checkSudoNoPassword("autostart"); err != nil {
+		return err
 	}
 
 	var autoName = jpid.Name + "_" + jpid.Ports
-	g.Log().Info(ctx, "更新自启状态并处理自启服务",
-		"pid", jpid.Pid,
-		"autoName", autoName,
-	)
+	g.Log().Info(ctx, "更新自启状态", "pid", jpid.Pid, "autoName", autoName, "autostart", autostart)
 
 	// 检查服务是否已存在
 	serviceExists := checkAutostartServiceExists(ctx, autoName)
 
 	if autostart == 1 {
-		// 如果服务已存在，先记录日志
-		if serviceExists {
-			g.Log().Info(ctx, "自启服务已存在，跳过添加", "autoName", autoName)
-		} else {
+		// 启用自启
+		if !serviceExists {
 			// 服务不存在，添加新服务
 			var execStr = jpid.Script
 			if jpid.Script == "" {
@@ -357,36 +357,36 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			} else {
 				execStr = jpid.Catalog + "/" + jpid.Script + " -b false"
 			}
+
 			g.Log().Info(ctx, "添加自启服务", "execStr", execStr)
 
-			// 注册自启
-			cmd := exec.Command("sudo", "autostart", "add", autoName, execStr, "--workdir="+jpid.Catalog, "--description="+jpid.Description)
-			if err := cmd.Run(); err != nil {
-				return gerror.Wrapf(err, "注册自启服务失败")
+			// 注册自启（使用改进的命令执行函数）
+			err := execSudoCommand(ctx, "autostart", "add", autoName, execStr,
+				"--workdir="+jpid.Catalog, "--description="+jpid.Description)
+			if err != nil {
+				return gerror.Wrap(err, "注册自启服务失败")
 			}
 		}
 
 		// 启用自启（无论服务是否已存在都需要确保启用）
-		cmd := exec.Command("sudo", "autostart", "enable", autoName)
-		if err := cmd.Run(); err != nil {
-			return gerror.Wrapf(err, "启用自启服务失败")
+		err := execSudoCommand(ctx, "autostart", "enable", autoName)
+		if err != nil {
+			return gerror.Wrap(err, "启用自启服务失败")
 		}
 
-		// 获取自启动服务列表
-		cmd = exec.Command("sudo", "autostart", "ls")
-		output, err := cmd.CombinedOutput()
+		// 验证自启动服务
+		err = s.verifyAutostartService(ctx, autoName)
 		if err != nil {
-			g.Log().Warning(ctx, "获取自启动服务列表失败", "error", err)
-		} else {
-			g.Log().Info(ctx, "当前自启动服务列表", "output", string(output))
+			g.Log().Warning(ctx, "验证自启动服务失败", "error", err)
 		}
+
 	} else {
 		// 移除自启
 		if serviceExists {
-			// 通过将 echo 'y' 通过管道传递给 autostart 命令来实现自动确认
-			cmd := exec.Command("bash", "-c", "echo 'y' | sudo autostart rm "+autoName)
-			if err := cmd.Run(); err != nil {
-				return gerror.Wrapf(err, "移除自启服务失败")
+			// 使用非交互模式移除服务
+			err := s.removeAutostartServiceNonInteractive(ctx, autoName)
+			if err != nil {
+				return gerror.Wrap(err, "移除自启服务失败")
 			}
 		} else {
 			g.Log().Info(ctx, "自启服务不存在，跳过移除", "autoName", autoName)
@@ -400,26 +400,128 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	return err
 }
 
-// checkAutostartServiceExists 检查autostart服务是否存在
-func checkAutostartServiceExists(ctx context.Context, autoName string) bool {
-	cmd := exec.Command("autostart", "exists", autoName)
+// removeAutostartServiceNonInteractive 非交互式移除自启服务
+func (s *SJpid) removeAutostartServiceNonInteractive(ctx context.Context, autoName string) error {
+	// 方法1: 使用echo 'y'通过管道
+	cmdCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, "bash", "-c", "echo 'y' | sudo -n autostart rm "+autoName)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		g.Log().Warning(ctx, "方法1移除自启服务失败，尝试方法2",
+			"error", err, "output", string(output))
+
+		// 方法2: 直接禁用服务
+		err3 := execSudoCommand(ctx, "autostart", "disable", autoName)
+		if err3 != nil {
+			return gerror.Wrapf(err, "所有移除方法都失败了，原始错误: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// verifyAutostartService 验证自启动服务状态
+func (s *SJpid) verifyAutostartService(ctx context.Context, autoName string) error {
+	cmd := exec.Command("sudo", "-n", "autostart", "ls")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		return gerror.Wrap(err, "获取自启动服务列表失败")
+	}
+
+	g.Log().Info(ctx, "当前自启动服务列表", "output", string(output))
+
+	// 检查服务是否在列表中
+	if !strings.Contains(string(output), autoName) {
+		return gerror.New("服务未出现在自启动列表中")
+	}
+
+	return nil
+}
+
+// checkAutostartServiceExists 检查autostart服务是否存在
+func checkAutostartServiceExists(ctx context.Context, autoName string) bool {
+	cmdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, "autostart", "exists", autoName)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
 		g.Log().Debug(ctx, "检查自启服务状态",
-			"autoName", autoName,
-			"error", err,
-			"output", string(output),
-		)
-		// 如果命令执行失败，说明服务不存在
+			"autoName", autoName, "error", err, "output", string(output))
 		return false
 	}
 
-	// 检查输出中是否包含 "Service 'xxx' exists"
-	return strings.Contains(string(output), "Service '"+autoName+"' exists")
+	// 检查输出中是否包含确认信息
+	return strings.Contains(string(output), "Service '"+autoName+"' exists") ||
+		strings.Contains(string(output), autoName)
 }
 
 // 检查autostart命令是否安装
 func isAutostartInstalled() bool {
 	cmd := exec.Command("which", "autostart")
-	return cmd.Run() == nil
+	err := cmd.Run()
+	if err != nil {
+		// 也尝试检查常见安装路径
+		paths := []string{
+			"/usr/local/bin/autostart",
+			"/usr/bin/autostart",
+			"/opt/autostart/bin/autostart",
+		}
+
+		for _, path := range paths {
+			if cmd := exec.Command("test", "-x", path); cmd.Run() == nil {
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+// checkSudoNoPassword 检查是否可以无密码执行sudo命令
+func checkSudoNoPassword(command string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sudo", "-n", command, "--help")
+	if err := cmd.Run(); err != nil {
+		return gerror.New("无法无密码执行sudo命令，请配置sudo免密:\n" +
+			"1. 执行: sudo visudo\n" +
+			"2. 添加: " + getCurrentUser() + " ALL=(ALL) NOPASSWD: /*/autostart\n" +
+			"3. 保存并退出")
+	}
+	return nil
+}
+
+// getCurrentUser 获取当前用户名
+func getCurrentUser() string {
+	cmd := exec.Command("whoami")
+	output, err := cmd.Output()
+	if err != nil {
+		return "username" // 默认值
+	}
+	return strings.TrimSpace(string(output))
+}
+
+// execSudoCommand 执行sudo命令，带超时和错误处理
+func execSudoCommand(ctx context.Context, args ...string) error {
+	// 设置命令超时
+	cmdCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// 构建完整的sudo命令
+	fullArgs := append([]string{"sudo", "-n"}, args...)
+	cmd := exec.CommandContext(cmdCtx, fullArgs[0], fullArgs[1:]...)
+
+	// 执行命令并获取输出
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return gerror.Wrapf(err, "执行sudo命令失败: %s, 输出: %s", strings.Join(args, " "), string(output))
+	}
+
+	return nil
 }
