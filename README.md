@@ -29,7 +29,41 @@ v2.9.0
 
 2. [接口文档](http://127.0.0.1:8000/swagger/#tag/Java)
 
+# 自启工具
+使用Systemd 服务方式构建自启管理工具
 
+## 已测环境
+> 如果 `systemctl --version` 版本比我的低可能会用不起
+systemd 255 (255.4-1ubuntu8.8)
+systemd 219 (CentOS Linux release 7.9.2009 (Core))
+
+## 查看使用文档
+autostart help
+
+# 聚合网关
+## script
+```bash
+# dir
+cd gateway
+# install
+npm install
+# run
+npm run dev
+```
+## access url
+http://127.0.0.1:3000
+
+## 环境
+```shell
+# react
+^19.0.0
+# next
+15.3.2
+# node -v
+v20.9.0  or  v22.14.0  
+# npm -v
+10.1.0
+```
 
 
 # 问题注意

@@ -25,7 +25,7 @@ sudo ./autostart install-global
 # 卸载全局环境
 sudo ./autostart uninstall-global
 
-# 查看帮助（包含新命令）
+# 查看帮助
 autostart help
 ```
 
