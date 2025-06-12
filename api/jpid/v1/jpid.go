@@ -96,6 +96,7 @@ type StartWithDockerRes struct {
 }
 
 type UpdateAutostartReq struct {
+	g.Meta    `path:"/jpid/autostart/:id" method:"post" tags:"autostart" summary:"更新自启状态"`
 	Id        int `v:"required#请输入项目ID"`
 	Autostart int `v:"required|in:0,1#请选择正确的自启状态"`
 }
