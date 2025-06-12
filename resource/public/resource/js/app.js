@@ -207,17 +207,37 @@ window.setupEventListeners = function () {
                     console.error("showEditModal function not available.");
                 }
             }
-            // 添加自启按钮处理
-            if (e.target.closest('.auto-start-btn')) {
-                const button = e.target.closest('.auto-start-btn');
+
+            // 在项目列表事件委托中添加自启状态点击处理
+            if (e.target.closest('.autostart-status-btn')) {
+                const button = e.target.closest('.autostart-status-btn');
                 const id = parseInt(button.getAttribute('data-id'));
                 const currentAutostart = parseInt(button.getAttribute('data-autostart'));
                 const newAutostart = currentAutostart === 1 ? 0 : 1;
 
+                // 显示操作提示
+                const actionText = newAutostart === 1 ? '注册' : '卸载';
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(`正在${actionText}自启...`, 'info');
+                }
+
                 if (typeof window.updateAutostart === 'function') {
-                    window.updateAutostart(id, newAutostart).then(r => {});
+                    window.updateAutostart(id, newAutostart).then(success => {
+                        if (success) {
+                            if (typeof window.showNotification === 'function') {
+                                window.showNotification(`${actionText}自启成功`, 'success');
+                            }
+                        } else {
+                            if (typeof window.showNotification === 'function') {
+                                window.showNotification(`${actionText}自启失败`, 'danger');
+                            }
+                        }
+                    });
                 } else {
                     console.error("updateAutostart function not available.");
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification('自启功能不可用', 'danger');
+                    }
                 }
             }
         });

@@ -102,3 +102,27 @@ body {
         max-width: 80px;
     }
 }
+
+
+
+/* 自启状态按钮样式 */
+.autostart-status-btn {
+    transition: all 0.2s ease-in-out;
+    user-select: none;
+}
+
+.autostart-status-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.autostart-status-btn:active {
+    transform: scale(0.95);
+}
+
+/* 自启状态按钮禁用状态 */
+.autostart-status-btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
