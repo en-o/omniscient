@@ -314,7 +314,7 @@ func (s *SJpid) Delete(ctx context.Context, id int) error {
 	if jpid.Autostart == 1 {
 		autoName := jpid.Name + "_" + jpid.Ports
 		if autostart.CheckAutostartServiceExists(ctx, autoName) {
-			err := s.removeAutostartServiceNonInteractive(ctx, autoName)
+			err := autostart.RemoveAutostartServiceNonInteractive(ctx, autoName)
 			if err != nil {
 				g.Log().Warning(ctx, "移除自启动服务失败", "error", err)
 				// 继续执行删除操作，不中断流程
