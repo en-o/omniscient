@@ -310,6 +310,18 @@ func (s *SJpid) Delete(ctx context.Context, id int) error {
 		return gerror.New("项目正在运行中，请先停止项目后再删除")
 	}
 
+	// 如果项目设置了自启，先移除自启动服务
+	if jpid.Autostart == 1 {
+		autoName := jpid.Name + "_" + jpid.Ports
+		if autostart.CheckAutostartServiceExists(ctx, autoName) {
+			err := s.removeAutostartServiceNonInteractive(ctx, autoName)
+			if err != nil {
+				g.Log().Warning(ctx, "移除自启动服务失败", "error", err)
+				// 继续执行删除操作，不中断流程
+			}
+		}
+	}
+
 	// 执行删除操作
 	_, err = dao.Jpid.Ctx(ctx).Where("id", id).Delete()
 	return err
@@ -378,7 +390,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostartType int) 
 		}
 
 		// 验证自启动服务
-		err = s.verifyAutostartService(ctx, autoName)
+		err = autostart.VerifyAutostartService(ctx, autoName)
 		if err != nil {
 			g.Log().Warning(ctx, "验证自启动服务失败", "error", err)
 		}
@@ -387,7 +399,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostartType int) 
 		// 移除自启
 		if serviceExists {
 			// 使用非交互模式移除服务
-			err := s.removeAutostartServiceNonInteractive(ctx, autoName)
+			err := autostart.RemoveAutostartServiceNonInteractive(ctx, autoName)
 			if err != nil {
 				return gerror.Wrap(err, "移除自启服务失败")
 			}
@@ -401,45 +413,4 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostartType int) 
 		"autostart": autostartType,
 	}).Where("id", id).Update()
 	return err
-}
-
-// removeAutostartServiceNonInteractive 非交互式移除自启服务
-func (s *SJpid) removeAutostartServiceNonInteractive(ctx context.Context, autoName string) error {
-	// 方法1: 使用echo 'y'通过管道
-	cmdCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdCtx, "bash", "-c", "echo 'y' | autostart rm "+autoName)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		g.Log().Warning(ctx, "方法1移除自启服务失败，尝试方法2",
-			"error", err, "output", string(output))
-
-		// 方法2: 直接禁用服务
-		err3 := system.ExecCommand(ctx, "autostart", "disable", autoName)
-		if err3 != nil {
-			return gerror.Wrapf(err, "所有移除方法都失败了，原始错误: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// verifyAutostartService 验证自启动服务状态
-func (s *SJpid) verifyAutostartService(ctx context.Context, autoName string) error {
-	cmd := exec.Command("autostart", "ls")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return gerror.Wrap(err, "获取自启动服务列表失败")
-	}
-
-	g.Log().Info(ctx, "当前自启动服务列表", "output", string(output))
-
-	// 检查服务是否在列表中
-	if !strings.Contains(string(output), autoName) {
-		return gerror.New("服务未出现在自启动列表中")
-	}
-
-	return nil
 }
