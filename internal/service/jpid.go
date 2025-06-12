@@ -336,11 +336,6 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		return gerror.New("请先安装autostart并设置环境变量")
 	}
 
-	// 检查sudo免密配置
-	if err := checkSudoNoPassword("autostart"); err != nil {
-		return err
-	}
-
 	var autoName = jpid.Name + "_" + jpid.Ports
 	g.Log().Info(ctx, "更新自启状态", "pid", jpid.Pid, "autoName", autoName, "autostart", autostart)
 
@@ -361,7 +356,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 			g.Log().Info(ctx, "添加自启服务", "execStr", execStr)
 
 			// 注册自启（使用改进的命令执行函数）
-			err := execSudoCommand(ctx, "autostart", "add", autoName, execStr,
+			err := execCommand(ctx, "autostart", "add", autoName, execStr,
 				"--workdir="+jpid.Catalog, "--description="+jpid.Description)
 			if err != nil {
 				return gerror.Wrap(err, "注册自启服务失败")
@@ -369,7 +364,7 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 		}
 
 		// 启用自启（无论服务是否已存在都需要确保启用）
-		err := execSudoCommand(ctx, "autostart", "enable", autoName)
+		err := execCommand(ctx, "autostart", "enable", autoName)
 		if err != nil {
 			return gerror.Wrap(err, "启用自启服务失败")
 		}
@@ -406,7 +401,7 @@ func (s *SJpid) removeAutostartServiceNonInteractive(ctx context.Context, autoNa
 	cmdCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, "bash", "-c", "echo 'y' | sudo -n autostart rm "+autoName)
+	cmd := exec.CommandContext(cmdCtx, "bash", "-c", "echo 'y' | autostart rm "+autoName)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -425,7 +420,7 @@ func (s *SJpid) removeAutostartServiceNonInteractive(ctx context.Context, autoNa
 
 // verifyAutostartService 验证自启动服务状态
 func (s *SJpid) verifyAutostartService(ctx context.Context, autoName string) error {
-	cmd := exec.Command("sudo", "-n", "autostart", "ls")
+	cmd := exec.Command("autostart", "ls")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return gerror.Wrap(err, "获取自启动服务列表失败")
@@ -505,6 +500,20 @@ func getCurrentUser() string {
 		return "username" // 默认值
 	}
 	return strings.TrimSpace(string(output))
+}
+
+// execSudoCommand 执行命令，带超时和错误处理
+func execCommand(ctx context.Context, args ...string) error {
+	cmdCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, args[0], args[1:]...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return gerror.Wrapf(err, "执行命令失败: %s, 输出: %s",
+			strings.Join(args, " "), string(output))
+	}
+	return nil
 }
 
 // execSudoCommand 执行sudo命令，带超时和错误处理
