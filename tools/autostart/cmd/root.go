@@ -109,6 +109,10 @@ func executeCommand(command string) error {
 		"status":  func() { handleServiceStatus(sm) },
 		"logs":    func() { handleServiceLogs(sm) },
 
+		// 服务状态查询命令
+		"exists": func() { handleServiceExists(sm) },
+		"check":  func() { handleServiceExists(sm) },
+
 		// 工具命令
 		"version":          func() { printVersion() },
 		"-v":               func() { printVersion() },
@@ -262,6 +266,25 @@ func printVersion() {
 func handleError(err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// handleServiceExists 处理服务存在性检查命令
+func handleServiceExists(sm *service.ServiceManager) {
+	serviceName, err := getServiceNameArg("exists")
+	if err != nil {
+		handleError(err)
+		return
+	}
+
+	exists := sm.ServiceExists(serviceName)
+	if exists {
+		fmt.Printf("✓ Service '%s' exists\n", serviceName)
+		sm.ShowServiceBriefStatus(serviceName)
+		os.Exit(0)
+	} else {
+		fmt.Printf("✗ Service '%s' does not exist\n", serviceName)
 		os.Exit(1)
 	}
 }

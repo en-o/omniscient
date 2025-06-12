@@ -135,7 +135,7 @@ func (sm *ServiceManager) getServiceDescription(serviceName string) string {
 
 // EnableService 启用服务自启动
 func (sm *ServiceManager) EnableService(serviceName string) error {
-	if !sm.serviceExists(serviceName) {
+	if !sm.ServiceExists(serviceName) {
 		return fmt.Errorf("service '%s' does not exist", serviceName)
 	}
 
@@ -146,13 +146,13 @@ func (sm *ServiceManager) EnableService(serviceName string) error {
 	}
 
 	fmt.Printf("✓ Service '%s' enabled for autostart on boot\n", serviceName)
-	sm.showServiceBriefStatus(serviceName)
+	sm.ShowServiceBriefStatus(serviceName)
 	return nil
 }
 
 // DisableService 禁用服务自启动
 func (sm *ServiceManager) DisableService(serviceName string) error {
-	if !sm.serviceExists(serviceName) {
+	if !sm.ServiceExists(serviceName) {
 		return fmt.Errorf("service '%s' does not exist", serviceName)
 	}
 
@@ -164,13 +164,13 @@ func (sm *ServiceManager) DisableService(serviceName string) error {
 
 	fmt.Printf("✓ Service '%s' disabled from autostart on boot\n", serviceName)
 	fmt.Printf("Note: Service is still running if it was started. Use '%s stop %s' to stop it.\n", ToolName, serviceName)
-	sm.showServiceBriefStatus(serviceName)
+	sm.ShowServiceBriefStatus(serviceName)
 	return nil
 }
 
 // AddAutostartService 添加自启服务
 func (sm *ServiceManager) AddAutostartService(serviceName, execStart string, options []string) error {
-	if sm.serviceExists(serviceName) {
+	if sm.ServiceExists(serviceName) {
 		return fmt.Errorf("service '%s' already exists. Use '%s remove %s' to remove it first, or '%s edit %s' to modify it",
 			serviceName, ToolName, serviceName, ToolName, serviceName)
 	}
@@ -388,14 +388,14 @@ func (sm *ServiceManager) RestartService(serviceName string) error {
 }
 
 // serviceExists 检查服务是否存在
-func (sm *ServiceManager) serviceExists(serviceName string) bool {
+func (sm *ServiceManager) ServiceExists(serviceName string) bool {
 	servicePath := fmt.Sprintf("/etc/systemd/system/autostart-%s.service", serviceName)
 	_, err := os.Stat(servicePath)
 	return err == nil
 }
 
 // showServiceBriefStatus 显示服务简要状态
-func (sm *ServiceManager) showServiceBriefStatus(serviceName string) {
+func (sm *ServiceManager) ShowServiceBriefStatus(serviceName string) {
 	fullServiceName := fmt.Sprintf("autostart-%s", serviceName)
 
 	enabledCmd := exec.Command("systemctl", "is-enabled", fullServiceName)
