@@ -188,7 +188,8 @@ window.setupEventListeners = function () {
                 const button = e.target.closest('.delete-project-btn');
                 const id = button.getAttribute('data-id');
                 if (typeof window.deleteProject === 'function') {
-                    window.deleteProject(parseInt(id)).then(r => {}); // Ensure ID is a number
+                    window.deleteProject(parseInt(id)).then(r => {
+                    }); // Ensure ID is a number
                 } else {
                     console.error("deleteProject function not available.");
                 }
@@ -275,15 +276,11 @@ window.setupEventListeners = function () {
             }
 
             if (typeof window.updateAutostart === 'function') {
-                window.updateAutostart(id, newAutostart).then(success => {
-                    if (success) {
-                        if (typeof window.showNotification === 'function') {
-                            window.showNotification(`${actionText}自启成功`, 'success');
-                        }
+                window.updateAutostart(id, newAutostart).then(response => {
+                    if (response.code === 0) {
+                        window.showNotification(`${actionText}自启成功`, 'success');
                     } else {
-                        if (typeof window.showNotification === 'function') {
-                            window.showNotification(`${actionText}自启失败`, 'danger');
-                        }
+                        window.showNotification(`${actionText}自启失败: ${response.message}`, 'danger');
                     }
                 });
             } else {
@@ -380,7 +377,6 @@ window.handleContextMenuKeyboard = function (e) {
         }
     }
 };
-
 
 
 // ===== 初始化 =====
