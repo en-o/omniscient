@@ -329,9 +329,8 @@ func (s *SJpid) UpdateAutostart(ctx context.Context, id int, autostart int) erro
 	// 检查autostart命令是否存在
 	if !isAutostartInstalled() {
 		return gerror.New("请先安装autostart并设置环境变量:\n" +
-			"1. sudo apt install autostart\n" +
-			"2. echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc\n" +
-			"3. source ~/.bashrc")
+			"1. 下载 autostart\n" +
+			"2. sudo ./autostart install-global\n")
 	}
 
 	if autostart == 1 {
