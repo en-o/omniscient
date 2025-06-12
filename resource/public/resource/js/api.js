@@ -7,7 +7,8 @@ const API_ENDPOINTS = {
     START_SCRIPT: '/jpid/start/script/',
     START_DOCKER: '/jpid/start/docker/',
     DELETE: '/jpid/delete/',
-    UPDATE: '/jpid/update/'
+    UPDATE: '/jpid/update/',
+    AUTOSTART: '/jpid/autostart/'
 };
 
 const AUTO_REGISTER_INTERVAL = 60000; // 60秒
@@ -350,7 +351,7 @@ window.stopProject = async function (pid) {
         stopConfirmModal._element.addEventListener('hidden.bs.modal', () => {
             confirmStopBtn.onclick = null;
             resolve(false);
-        }, { once: true });
+        }, {once: true});
     });
 };
 
@@ -535,13 +536,12 @@ window.handleRunRequest = function (url, title = "运行输出") {
 };
 
 
-
 /**
  * 处理Docker启动请求
  * @param {number} pid - 项目PID
  * @param {boolean} reset - 是否为重启操作
  */
-window.handleDockerRequest = function(pid, reset=false) {
+window.handleDockerRequest = function (pid, reset = false) {
     if (!pid) {
         console.error("无效的PID");
         if (typeof window.showNotification === 'function') {
@@ -562,7 +562,8 @@ window.handleDockerRequest = function(pid, reset=false) {
     }
     const outputModal = new bootstrap.Modal(outputModalElement);
 
-    document.getElementById('outputModalLabel').textContent = reset ? 'Docker重启输出' : 'Docker启动输出';;
+    document.getElementById('outputModalLabel').textContent = reset ? 'Docker重启输出' : 'Docker启动输出';
+    ;
 
     // 清空并初始化输出内容和底部按钮
     const outputContent = document.getElementById('outputContent');
@@ -661,4 +662,28 @@ window.handleDockerRequest = function(pid, reset=false) {
     });
 };
 
+
+// 添加更新自启状态的函数
+window.updateAutostart = async function (id, autostart) {
+    try {
+        const result = await window.apiRequest(
+            `${API_ENDPOINTS.AUTOSTART}${id}`,
+            'POST',
+            {autostart}
+        );
+
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(result.message);
+        }
+
+        if (typeof window.fetchProjects === 'function') {
+            await window.fetchProjects();
+        }
+        return result
+    } catch (error) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`操作失败：${error.message}`, 'danger');
+        }
+    }
+};
 

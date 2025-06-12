@@ -117,6 +117,7 @@ window.renderProjectList = function(projects) {
 
         }
 
+
         // 添加编辑选项（适用于所有项目类型）
         operationItems += `
             <li><hr class="dropdown-divider"></li>
@@ -159,6 +160,16 @@ window.renderProjectList = function(projects) {
             <td>
                 <span class="badge ${project.way === 1 ? 'bg-primary' : 'bg-success'}">
                     ${project.way === 1 ? 'docker' : 'jdk'}
+                </span>
+            </td>
+            <td>
+                <span class="badge ${project.way === 1 ? 'bg-secondary' : (project.autostart === 1 ? 'bg-success' : 'bg-danger')} ${project.way === 1 ? '' : 'autostart-status-btn'}"
+                      ${project.way === 1 ? '' : `data-id="${project.id}" data-autostart="${project.autostart}"`}
+                      style="cursor: ${project.way === 1 ? 'not-allowed' : 'pointer'};"
+                      data-bs-toggle="tooltip"
+                      title="${project.way === 1 ? 'Docker方式运行不支持自启' : `点击${project.autostart === 1 ? '卸载' : '注册'}自启`}">
+                    <i class="bi bi-${project.way === 1 ? 'dash-circle' : (project.autostart === 1 ? 'check-circle' : 'dash-circle')} me-1"></i>
+                    ${project.way === 1 ? '不支持' : (project.autostart === 1 ? '自启中' : '待自启')}
                 </span>
             </td>
             <td>
@@ -252,5 +263,74 @@ window.updateOutputModalFooter = function(footer, pid = null, isRunning = false)
         closeButton.textContent = '关闭';
         closeButton.setAttribute('data-bs-dismiss', 'modal');
         footer.appendChild(closeButton);
+    }
+};
+
+
+/**
+ * 显示自启确认模态框
+ * @param {number} id - 项目ID
+ * @param {number} newAutostart - 新的自启状态 (0或1)
+ * @param {string} projectName - 项目名称
+ * @param {string} projectDescription - 项目描述
+ */
+window.showAutostartConfirmModal = function(id, newAutostart, projectName, projectDescription) {
+    const modal = document.getElementById('autostartConfirmModal');
+    const titleElement = document.getElementById('autostartConfirmModalLabel');
+    const iconElement = document.getElementById('autostartConfirmIcon');
+    const actionElement = document.getElementById('autostartConfirmAction');
+    const nameElement = document.getElementById('autostartProjectName');
+    const descriptionElement = document.getElementById('autostartProjectDescription');
+    const noteElement = document.getElementById('autostartConfirmNote');
+    const confirmButton = document.getElementById('confirmAutostartButton');
+    const projectIdInput = document.getElementById('autostartProjectId');
+    const newValueInput = document.getElementById('autostartNewValue');
+
+    if (!modal) {
+        console.error("Autostart confirm modal not found.");
+        return;
+    }
+
+    // 设置模态框内容
+    const isRegister = newAutostart === 1;
+    const actionText = isRegister ? '注册' : '卸载';
+    const actionColor = isRegister ? 'text-success' : 'text-warning';
+    const buttonClass = isRegister ? 'btn-success' : 'btn-warning';
+    const iconClass = isRegister ? 'bi-check-circle text-success' : 'bi-dash-circle text-warning';
+
+    if (titleElement) titleElement.textContent = `${actionText}自启确认`;
+    if (iconElement) {
+        iconElement.className = `bi ${iconClass} fs-1 mb-2`;
+    }
+    if (actionElement) {
+        actionElement.textContent = actionText;
+        actionElement.className = actionColor;
+    }
+    if (nameElement) nameElement.textContent = projectName;
+    if (descriptionElement) descriptionElement.textContent = projectDescription || '无描述';
+    if (noteElement) {
+        const baseMessage = isRegister
+            ? '注册自启后，项目将在系统启动时自动运行。'
+            : '卸载自启后，项目将不再在系统启动时自动运行。';
+        const additionalInfo = isRegister
+            ? '<br>(请确保autostart环境正确安装 <a href="https://gitee.com/tanoo/omniscient/blob/master/tools/autostart/README.md#%E5%85%A8%E5%B1%80%E7%8E%AF%E5%A2%83%E8%AE%BE%E7%BD%AE" target="_blank">查看安装指南</a>)'
+            : '';
+        noteElement.innerHTML = `${baseMessage}${additionalInfo}`;
+    }
+    if (confirmButton) {
+        confirmButton.textContent = `确认${actionText}`;
+        confirmButton.className = `btn ${buttonClass}`;
+    }
+    if (projectIdInput) projectIdInput.value = id;
+    if (newValueInput) newValueInput.value = newAutostart;
+
+    // 显示模态框
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        new bootstrap.Modal(modal).show();
+    } else {
+        console.error("Bootstrap Modal is not available.");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无法显示确认对话框：依赖组件未加载。", 'danger');
+        }
     }
 };

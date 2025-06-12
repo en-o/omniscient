@@ -19,6 +19,8 @@ func NeedsRoot(command string) bool {
 		"enable": true, "disable": true,
 		"start": true, "stop": true, "restart": true,
 		"edit":             true,
+		"exists":           true,
+		"check":            true,
 		"install-global":   true,
 		"uninstall-global": true,
 	}
@@ -51,7 +53,9 @@ func PrintHelp() {
 	fmt.Println("    status <name>                               - Show service status")
 	fmt.Println("    logs <name> [lines]                         - Show service logs")
 	fmt.Println("")
-
+	fmt.Println("  Service Query:")
+	fmt.Println("    exists, check <name>                      - Check if service exists")
+	fmt.Println("")
 	fmt.Println("  Tool Management:")
 	fmt.Println("    install-global                            - Install to global environment")
 	fmt.Println("    uninstall-global                          - Uninstall from global environment")
