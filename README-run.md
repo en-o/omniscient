@@ -1,3 +1,5 @@
+避免中文路径
+
 # run omniscient
 > root 运行，要不然有些命令会失效
 1. 准备 config.prod.yaml [跟omniscient同级]
