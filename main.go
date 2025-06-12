@@ -84,7 +84,7 @@ Examples:
 func printWelcomeInfo(ctx g.Ctx) {
 	port := g.Cfg().MustGet(ctx, "server.address").String()
 	if port == "" {
-		port = ":8000"
+		port = ":7777"
 	}
 	if port[0] == ':' {
 		port = port[1:]
