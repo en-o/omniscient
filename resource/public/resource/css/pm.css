@@ -126,3 +126,37 @@ body {
     cursor: not-allowed !important;
     pointer-events: none;
 }
+
+/* 自启确认模态框样式 */
+#autostartConfirmModal .modal-header {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+#autostartConfirmModal .modal-body {
+    padding: 2rem 1.5rem;
+}
+
+#autostartConfirmModal .alert-info {
+    border-left: 4px solid #0dcaf0;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+#autostartConfirmIcon {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#autostartConfirmModal .btn {
+    min-width: 80px;
+}
+
+/* 模态框动画优化 */
+#autostartConfirmModal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translateY(-50px);
+}
+
+#autostartConfirmModal.show .modal-dialog {
+    transform: translateY(0);
+}

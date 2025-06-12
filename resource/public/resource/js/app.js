@@ -208,38 +208,29 @@ window.setupEventListeners = function () {
                 }
             }
 
-            // 在项目列表事件委托中添加自启状态点击处理
+            // 在项目列表事件委托中替换自启状态点击处理
             if (e.target.closest('.autostart-status-btn')) {
                 const button = e.target.closest('.autostart-status-btn');
                 const id = parseInt(button.getAttribute('data-id'));
                 const currentAutostart = parseInt(button.getAttribute('data-autostart'));
                 const newAutostart = currentAutostart === 1 ? 0 : 1;
 
-                // 显示操作提示
-                const actionText = newAutostart === 1 ? '注册' : '卸载';
-                if (typeof window.showNotification === 'function') {
-                    window.showNotification(`正在${actionText}自启...`, 'info');
+                // 从项目数据中获取项目信息
+                const project = window.projectsData.find(p => p.id === id);
+                if (!project) {
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification('项目信息未找到', 'danger');
+                    }
+                    return;
                 }
 
-                if (typeof window.updateAutostart === 'function') {
-                    window.updateAutostart(id, newAutostart).then(success => {
-                        if (success) {
-                            if (typeof window.showNotification === 'function') {
-                                window.showNotification(`${actionText}自启成功`, 'success');
-                            }
-                        } else {
-                            if (typeof window.showNotification === 'function') {
-                                window.showNotification(`${actionText}自启失败`, 'danger');
-                            }
-                        }
-                    });
+                if (typeof window.showAutostartConfirmModal === 'function') {
+                    window.showAutostartConfirmModal(id, newAutostart, project.name, project.description);
                 } else {
-                    console.error("updateAutostart function not available.");
-                    if (typeof window.showNotification === 'function') {
-                        window.showNotification('自启功能不可用', 'danger');
-                    }
+                    console.error("showAutostartConfirmModal function not available.");
                 }
             }
+
         });
     } else {
         console.error("Project list element not found.");
@@ -262,6 +253,48 @@ window.setupEventListeners = function () {
         document.addEventListener('keydown', window.handleContextMenuKeyboard);
     } else {
         console.error("handleContextMenuKeyboard function not available.");
+    }
+
+    // 在 setupEventListeners 函数末尾添加确认按钮的事件监听
+    const confirmAutostartButton = document.getElementById('confirmAutostartButton');
+    if (confirmAutostartButton) {
+        confirmAutostartButton.addEventListener('click', () => {
+            const id = parseInt(document.getElementById('autostartProjectId').value);
+            const newAutostart = parseInt(document.getElementById('autostartNewValue').value);
+            const actionText = newAutostart === 1 ? '注册' : '卸载';
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('autostartConfirmModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            // 显示操作提示
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(`正在${actionText}自启...`, 'info');
+            }
+
+            if (typeof window.updateAutostart === 'function') {
+                window.updateAutostart(id, newAutostart).then(success => {
+                    if (success) {
+                        if (typeof window.showNotification === 'function') {
+                            window.showNotification(`${actionText}自启成功`, 'success');
+                        }
+                    } else {
+                        if (typeof window.showNotification === 'function') {
+                            window.showNotification(`${actionText}自启失败`, 'danger');
+                        }
+                    }
+                });
+            } else {
+                console.error("updateAutostart function not available.");
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification('自启功能不可用', 'danger');
+                }
+            }
+        });
+    } else {
+        console.error("Confirm autostart button not found.");
     }
 
     // 清理页面卸载时的资源

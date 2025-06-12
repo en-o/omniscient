@@ -266,3 +266,68 @@ window.updateOutputModalFooter = function(footer, pid = null, isRunning = false)
         footer.appendChild(closeButton);
     }
 };
+
+
+/**
+ * 显示自启确认模态框
+ * @param {number} id - 项目ID
+ * @param {number} newAutostart - 新的自启状态 (0或1)
+ * @param {string} projectName - 项目名称
+ * @param {string} projectDescription - 项目描述
+ */
+window.showAutostartConfirmModal = function(id, newAutostart, projectName, projectDescription) {
+    const modal = document.getElementById('autostartConfirmModal');
+    const titleElement = document.getElementById('autostartConfirmModalLabel');
+    const iconElement = document.getElementById('autostartConfirmIcon');
+    const actionElement = document.getElementById('autostartConfirmAction');
+    const nameElement = document.getElementById('autostartProjectName');
+    const descriptionElement = document.getElementById('autostartProjectDescription');
+    const noteElement = document.getElementById('autostartConfirmNote');
+    const confirmButton = document.getElementById('confirmAutostartButton');
+    const projectIdInput = document.getElementById('autostartProjectId');
+    const newValueInput = document.getElementById('autostartNewValue');
+
+    if (!modal) {
+        console.error("Autostart confirm modal not found.");
+        return;
+    }
+
+    // 设置模态框内容
+    const isRegister = newAutostart === 1;
+    const actionText = isRegister ? '注册' : '卸载';
+    const actionColor = isRegister ? 'text-success' : 'text-warning';
+    const buttonClass = isRegister ? 'btn-success' : 'btn-warning';
+    const iconClass = isRegister ? 'bi-check-circle text-success' : 'bi-dash-circle text-warning';
+
+    if (titleElement) titleElement.textContent = `${actionText}自启确认`;
+    if (iconElement) {
+        iconElement.className = `bi ${iconClass} fs-1 mb-2`;
+    }
+    if (actionElement) {
+        actionElement.textContent = actionText;
+        actionElement.className = actionColor;
+    }
+    if (nameElement) nameElement.textContent = projectName;
+    if (descriptionElement) descriptionElement.textContent = projectDescription || '无描述';
+    if (noteElement) {
+        noteElement.textContent = isRegister
+            ? '注册自启后，项目将在系统启动时自动运行。'
+            : '卸载自启后，项目将不再在系统启动时自动运行。';
+    }
+    if (confirmButton) {
+        confirmButton.textContent = `确认${actionText}`;
+        confirmButton.className = `btn ${buttonClass}`;
+    }
+    if (projectIdInput) projectIdInput.value = id;
+    if (newValueInput) newValueInput.value = newAutostart;
+
+    // 显示模态框
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        new bootstrap.Modal(modal).show();
+    } else {
+        console.error("Bootstrap Modal is not available.");
+        if (typeof window.showNotification === 'function') {
+            window.showNotification("无法显示确认对话框：依赖组件未加载。", 'danger');
+        }
+    }
+};
