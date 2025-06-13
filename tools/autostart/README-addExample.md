@@ -30,3 +30,9 @@ with open(file_name, "w", encoding="utf-8") as wp:
 ```shell
 autostart add testPy "python3 /home/software/py/test_hello.py"
 ```
+
+# go
+> 用的 omniscient 主程序测试的
+```shell
+sudo autostart add testGo "/home/software/go/omniscient run" 
+```
