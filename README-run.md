@@ -2,7 +2,13 @@
 
 # run omniscient
 > root 运行，要不然有些命令会失效
-1. 准备 config.prod.yaml [跟omniscient同级]
+1. 准备 [config.prod.yaml](doc/config.prod.yaml) [跟omniscient同级] 
+> - 该文件是配置文件，默认会加载当前目录下的`config.prod.yaml`，如果没有则加载内置的配置文件  
+> - 默认是 sqlite3数据库，如果需要使用mysql请使用`--gf.gcfg.file=./config.mysql.yaml` ，参考[config.mysql.yaml](doc/config.mysql.yaml) 
+> - `omniscient sh config [file] ` 也可以设置配置文件，file可以是绝对路径或相对路径(最好是绝对路径)
+
+```yaml
+
 2. 注册omniscient自启
     ```shell
     chmod +x ./omniscient

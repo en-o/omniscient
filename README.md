@@ -13,10 +13,14 @@ v2.9.0
 - ubuntu 22.04
 - CentOS Linux release 7.9.2009 (Core)
 
+## 配置注释
+1. 默认数据库使用sqlite3
+2. 如果需要使用mysql，请修改[config.yaml](manifest/config/config.yaml)中的数据库配置
+3. 二进制文件需要使用mysql的时候请参考[config.mysql.yaml](doc/config.mysql.yaml)
 
 ## 数据库
-1. run [schema.sql](doc/schema.sql)
-2. run [table.sql](doc/table.sql)
+1. mysql的需要自行创建数据库，run [schema.sql](doc/schema.sql)， 至于表结构他会自动创建
+2. sqlite的会自动创建数据库文件和表结构
 
 ## run
 - `gf run main.go`
