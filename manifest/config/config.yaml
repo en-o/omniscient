@@ -11,7 +11,16 @@ logger:
 
 # https://goframe.org/docs/core/gdb-config-file
 database:
-  default:
+  # 数据库类型选择: mysql 或 sqlite
+  type: "mysql"  # 可以改为 "sqlite"
+  sqlite:
+    type: sqlite
+    link: "sqlite::@file(/var/data/omniscient.sqlite3)"
+    maxIdle: 10
+    maxOpen: 100
+    maxLifetime: 30
+    debug: true
+  mysql:
     link: "mysql:root:root@tcp(127.0.0.1:3306)/omniscient"
     maxIdle: 10
     maxOpen: 100
