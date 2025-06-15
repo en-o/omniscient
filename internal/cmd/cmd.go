@@ -66,6 +66,22 @@ func runServer(ctx context.Context) error {
 	workDir, _ := os.Getwd()
 	configPath := filepath.Join(workDir, DefaultConfigFile)
 
+	// 新增：优先读取 ~/.omniscient/default_config
+	homeDir, _ := os.UserHomeDir()
+	userConfigPath := filepath.Join(homeDir, ".omniscient", "default_config")
+	if gfile.Exists(userConfigPath) {
+		content := strings.TrimSpace(gfile.GetContents(userConfigPath))
+		if content != "" && gfile.Exists(content) {
+			g.Log().Infof(ctx, "Using user default config file: %s", content)
+			g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetFileName(content)
+		}
+	} else if gfile.Exists(configPath) {
+		g.Log().Infof(ctx, "Using external config file: %s", configPath)
+		g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetFileName(configPath)
+	} else {
+		g.Log().Info(ctx, "Using built-in config")
+	}
+
 	// 获取命令行配置的文件路径
 	configFile := g.Cfg().GetAdapter().(*gcfg.AdapterFile).GetFileName()
 	if configFile != "" && gfile.Exists(configFile) {

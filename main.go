@@ -74,7 +74,7 @@ Examples:
   omniscient sh stop      # stop service
   omniscient sh reload    # reload service
   omniscient sh restart   # restart service
-  omniscient sh config [file] # Set default config file or show current config
+  omniscient sh config [file] # Set default config file or show current config. The file is an absolute path.
 `,
 		}
 
