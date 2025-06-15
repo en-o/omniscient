@@ -14,9 +14,10 @@ v2.9.0
 - CentOS Linux release 7.9.2009 (Core)
 
 ## 配置注释
-1. 默认数据库使用sqlite3
+1. 默认数据库使用sqlite3, 文件在 `./data/` 想改路径自己在config中设置
 2. 如果需要使用mysql，请修改[config.yaml](manifest/config/config.yaml)中的数据库配置
 3. 二进制文件需要使用mysql的时候请参考[config.mysql.yaml](doc/config.mysql.yaml)
+
 
 ## 数据库
 1. mysql的需要自行创建数据库，run [schema.sql](doc/schema.sql)， 至于表结构他会自动创建
