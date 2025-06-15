@@ -1,6 +1,6 @@
 # https://goframe.org/docs/web/server-config-file-template
 server:
-  address:     ":8000"
+  address:     ":7777"
   openapiPath: "/api.json"
   swaggerPath: "/swagger"
 
@@ -12,7 +12,7 @@ logger:
 # https://goframe.org/docs/core/gdb-config-file
 database:
   # 数据库类型选择: mysql 或 sqlite
-  type: "sqlite"  # 可以改为 "sqlite"
+  type: "mysql"
   sqlite:
     type: sqlite
     link: "sqlite::@file(./data/omniscient.sqlite3)"

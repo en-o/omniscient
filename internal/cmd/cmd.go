@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gogf/gf/v2/os/gcfg"
+	"omniscient/internal/util/common"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,6 +66,22 @@ func runServer(ctx context.Context) error {
 	workDir, _ := os.Getwd()
 	configPath := filepath.Join(workDir, DefaultConfigFile)
 
+	// 新增：优先读取 ~/.omniscient/default_config
+	homeDir, _ := os.UserHomeDir()
+	userConfigPath := filepath.Join(homeDir, ".omniscient", "default_config")
+	if gfile.Exists(userConfigPath) {
+		content := strings.TrimSpace(gfile.GetContents(userConfigPath))
+		if content != "" && gfile.Exists(content) {
+			g.Log().Infof(ctx, "Using user default config file: %s", content)
+			g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetFileName(content)
+		}
+	} else if gfile.Exists(configPath) {
+		g.Log().Infof(ctx, "Using external config file: %s", configPath)
+		g.Cfg().GetAdapter().(*gcfg.AdapterFile).SetFileName(configPath)
+	} else {
+		g.Log().Info(ctx, "Using built-in config")
+	}
+
 	// 获取命令行配置的文件路径
 	configFile := g.Cfg().GetAdapter().(*gcfg.AdapterFile).GetFileName()
 	if configFile != "" && gfile.Exists(configFile) {
@@ -76,6 +93,15 @@ func runServer(ctx context.Context) error {
 	} else {
 		g.Log().Info(ctx, "Using built-in config")
 	}
+
+	// 初始化数据库 - 添加这部分
+	if err := common.InitDatabase(ctx); err != nil {
+		g.Log().Error(ctx, "数据库初始化失败:", err)
+		return err
+	}
+
+	// 打印欢迎信息
+	common.PrintWelcomeInfo(ctx)
 
 	s := g.Server()
 	s.Group("/", func(group *ghttp.RouterGroup) {
@@ -106,7 +132,7 @@ func handleShellCommand(ctx context.Context) error {
 	}
 
 	if len(args) == 0 {
-		printShellHelp()
+		common.PrintShellHelp()
 		return nil
 	}
 
@@ -136,25 +162,9 @@ func handleShellCommand(ctx context.Context) error {
 		return showCurrentConfig()
 	default:
 		fmt.Printf("Unknown command: %s\n", args[0])
-		printShellHelp()
+		common.PrintShellHelp()
 		return nil
 	}
-}
-
-// 打印帮助信息
-func printShellHelp() {
-	fmt.Println("Service Management Commands (requires root privileges):")
-	fmt.Println("Usage: sudo omniscient sh <command>")
-	fmt.Println("  status     - Show service status")
-	fmt.Println("  enable     - Enable service auto-start")
-	fmt.Println("  disable    - Disable service auto-start")
-	fmt.Println("  start      - Start service")
-	fmt.Println("  stop       - Stop service")
-	fmt.Println("  restart    - Restart service")
-	fmt.Println("  reload     - Reload service")
-	fmt.Println("  install    - Install systemd service")
-	fmt.Println("  uninstall  - Uninstall systemd service")
-	fmt.Println("  config [file] - Set default config file or show current config")
 }
 
 // 显示服务状态

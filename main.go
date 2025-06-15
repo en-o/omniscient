@@ -3,9 +3,11 @@ package main
 import (
 	"github.com/gogf/gf/v2/frame/g"
 	_ "omniscient/internal/packed"
+	"omniscient/internal/util/common"
 	"os"
 
 	_ "github.com/gogf/gf/contrib/drivers/mysql/v2"
+	_ "github.com/gogf/gf/contrib/drivers/sqlite/v2"
 
 	"github.com/gogf/gf/v2/os/gcmd"
 	"github.com/gogf/gf/v2/os/gctx"
@@ -20,7 +22,6 @@ func main() {
 
 	// 直接处理命令路由，不使用 GoFrame 的复杂命令系统
 	if len(args) <= 1 {
-		printWelcomeInfo(ctx)
 		// 没有参数时默认运行 run 命令
 		cmd.Main.Run(ctx)
 		return
@@ -29,7 +30,6 @@ func main() {
 	// 手动处理命令路由
 	switch args[1] {
 	case "run":
-		printWelcomeInfo(ctx)
 		err := cmd.Run.Func(ctx, nil)
 		if err != nil {
 			g.Log().Error(ctx, "运行服务器失败=========================")
@@ -39,6 +39,12 @@ func main() {
 		// 服务管理命令
 		err := cmd.Shell.Func(ctx, nil)
 		if err != nil {
+			return
+		}
+	case "dbinfo":
+		// 显示数据库信息
+		if err := common.ShowDatabaseInfo(ctx); err != nil {
+			g.Log().Error(ctx, "获取数据库信息失败:", err)
 			return
 		}
 	default:
@@ -53,10 +59,12 @@ Omniscient is a web service with comprehensive management capabilities.
 Available Commands:
   run      - Run the HTTP server (default)
   sh       - Usage: sudo omniscient sh <command> (Service management shell commands)
+  dbinfo   - Show database information
 
 Examples:
   omniscient              # Run the server (default)
   omniscient run          # Run the server explicitly  
+  omniscient dbinfo       # Show database configuration and status
   omniscient sh status    # Show service status
   omniscient sh install   # Install systemd service
   omniscient sh uninstall # uninstall systemd service
@@ -66,7 +74,7 @@ Examples:
   omniscient sh stop      # stop service
   omniscient sh reload    # reload service
   omniscient sh restart   # restart service
-  omniscient sh config [file] # Set default config file or show current config
+  omniscient sh config [file] # Set default config file or show current config. The file is an absolute path.
 `,
 		}
 
@@ -78,19 +86,4 @@ Examples:
 		}
 		command.Run(ctx)
 	}
-}
-
-// printWelcomeInfo 打印欢迎信息
-func printWelcomeInfo(ctx g.Ctx) {
-	port := g.Cfg().MustGet(ctx, "server.address").String()
-	if port == "" {
-		port = ":7777"
-	}
-	if port[0] == ':' {
-		port = port[1:]
-	}
-	g.Log().Info(ctx, "===================================")
-	g.Log().Info(ctx, "欢迎使用项目管理系统")
-	g.Log().Info(ctx, "后台管理地址: http://localhost:"+port+"/html/pm.html")
-	g.Log().Info(ctx, "===================================")
 }
