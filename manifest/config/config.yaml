@@ -15,7 +15,7 @@ database:
   type: "mysql"  # 可以改为 "sqlite"
   sqlite:
     type: sqlite
-    link: "sqlite::@file(/var/data/omniscient.sqlite3)"
+    link: "sqlite::@file(./data/omniscient.sqlite3)"
     maxIdle: 10
     maxOpen: 100
     maxLifetime: 30
