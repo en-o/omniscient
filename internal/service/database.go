@@ -83,24 +83,49 @@ func (dm *DatabaseManager) ensureSQLiteDir() error {
 		return fmt.Errorf("SQLite 连接字符串为空")
 	}
 
-	// 解析 SQLite 路径 (格式: sqlite:./data/omniscient.db)
+	g.Log().Infof(context.Background(), "正在解析 SQLite 连接字符串: %s", link)
+
+	var dbPath string
+
+	// 解析不同格式的 SQLite 连接字符串
 	if len(link) > 7 && link[:7] == "sqlite:" {
-		dbPath := link[7:] // 去除 "sqlite:" 前缀
+		remaining := link[7:] // 去除 "sqlite:" 前缀
 
-		// 如果是相对路径，转换为绝对路径
-		if !filepath.IsAbs(dbPath) {
-			workDir, _ := os.Getwd()
-			dbPath = filepath.Join(workDir, dbPath)
+		// 处理不同的连接字符串格式
+		if remaining[:6] == "@file(" && remaining[len(remaining)-1] == ')' {
+			// 格式: sqlite:@file(./data/omniscient.db)
+			dbPath = remaining[6 : len(remaining)-1]
+		} else if remaining[0] == ':' && len(remaining) > 6 && remaining[1:7] == "@file(" && remaining[len(remaining)-1] == ')' {
+			// 格式: sqlite::@file(./data/omniscient.db)
+			dbPath = remaining[7 : len(remaining)-1]
+		} else {
+			// 简单格式: sqlite:./data/omniscient.db
+			dbPath = remaining
 		}
+	} else {
+		// 如果不是以 sqlite: 开头，直接使用原字符串
+		dbPath = link
+	}
 
-		// 确保目录存在
-		dbDir := filepath.Dir(dbPath)
-		if !gfile.Exists(dbDir) {
-			if err := gfile.Mkdir(dbDir); err != nil {
-				return fmt.Errorf("创建数据库目录失败 %s: %v", dbDir, err)
-			}
-			g.Log().Infof(context.Background(), "创建 SQLite 数据目录: %s", dbDir)
+	g.Log().Infof(context.Background(), "提取的数据库文件路径: %s", dbPath)
+
+	// 如果是相对路径，转换为绝对路径
+	if !filepath.IsAbs(dbPath) {
+		workDir, _ := os.Getwd()
+		dbPath = filepath.Join(workDir, dbPath)
+	}
+
+	// 确保目录存在
+	dbDir := filepath.Dir(dbPath)
+	g.Log().Infof(context.Background(), "数据库目录路径: %s", dbDir)
+
+	if !gfile.Exists(dbDir) {
+		if err := gfile.Mkdir(dbDir); err != nil {
+			return fmt.Errorf("创建数据库目录失败 %s: %v", dbDir, err)
 		}
+		g.Log().Infof(context.Background(), "创建 SQLite 数据目录: %s", dbDir)
+	} else {
+		g.Log().Infof(context.Background(), "SQLite 数据目录已存在: %s", dbDir)
 	}
 
 	return nil
@@ -266,9 +291,24 @@ func (dm *DatabaseManager) GetDatabaseInfo(ctx context.Context) (map[string]inte
 			info["version"] = version
 		}
 
-		// 数据库文件路径
-		if len(dm.config.Link) > 7 {
-			info["database_file"] = dm.config.Link[7:]
+		// 解析数据库文件路径
+		link := dm.config.Link
+		var dbPath string
+		if len(link) > 7 && link[:7] == "sqlite:" {
+			remaining := link[7:]
+			if remaining[:6] == "@file(" && remaining[len(remaining)-1] == ')' {
+				dbPath = remaining[6 : len(remaining)-1]
+			} else if remaining[0] == ':' && len(remaining) > 6 && remaining[1:7] == "@file(" && remaining[len(remaining)-1] == ')' {
+				dbPath = remaining[7 : len(remaining)-1]
+			} else {
+				dbPath = remaining
+			}
+		} else {
+			dbPath = link
+		}
+
+		if dbPath != "" {
+			info["database_file"] = dbPath
 		}
 
 		// 获取表信息
