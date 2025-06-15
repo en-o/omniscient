@@ -134,9 +134,44 @@ func (dm *DatabaseManager) GetDatabaseType() string {
 	return dm.dbType
 }
 
-// CreateTables 创建数据表（示例）
+// tableExists 检查表是否存在
+func (dm *DatabaseManager) tableExists(ctx context.Context, tableName string) (bool, error) {
+	db := g.DB()
+
+	var checkSQL string
+	switch dm.dbType {
+	case "mysql":
+		checkSQL = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?"
+	case "sqlite":
+		checkSQL = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?"
+	default:
+		return false, fmt.Errorf("不支持的数据库类型: %s", dm.dbType)
+	}
+
+	count, err := db.GetValue(ctx, checkSQL, tableName)
+	if err != nil {
+		return false, err
+	}
+
+	return count.Int() > 0, nil
+}
+
+// CreateTables 创建数据表（避免重复创建）
 func (dm *DatabaseManager) CreateTables(ctx context.Context) error {
 	db := g.DB()
+
+	// 检查 jpid 表是否已存在
+	exists, err := dm.tableExists(ctx, "jpid")
+	if err != nil {
+		g.Log().Warningf(ctx, "检查表是否存在时出错: %v", err)
+	}
+
+	if exists {
+		g.Log().Info(ctx, "数据表 jpid 已存在，跳过创建")
+		return nil
+	}
+
+	g.Log().Info(ctx, "正在创建数据表 jpid...")
 
 	// 根据数据库类型选择合适的 SQL
 	var createJpidTableSQL string
@@ -181,12 +216,12 @@ func (dm *DatabaseManager) CreateTables(ctx context.Context) error {
 	}
 
 	// 执行建表语句
-	_, err := db.Exec(ctx, createJpidTableSQL)
+	_, err = db.Exec(ctx, createJpidTableSQL)
 	if err != nil {
-		return fmt.Errorf("创建用户表失败: %v", err)
+		return fmt.Errorf("创建 jpid 表失败: %v", err)
 	}
 
-	g.Log().Info(ctx, "数据表创建成功")
+	g.Log().Info(ctx, "数据表 jpid 创建成功")
 	return nil
 }
 
@@ -212,6 +247,18 @@ func (dm *DatabaseManager) GetDatabaseInfo(ctx context.Context) (map[string]inte
 			info["database"] = dbName
 		}
 
+		// 获取表信息
+		tables, err := db.GetAll(ctx, "SHOW TABLES")
+		if err == nil {
+			tableNames := make([]string, 0)
+			for _, table := range tables {
+				for _, v := range table {
+					tableNames = append(tableNames, v.String())
+				}
+			}
+			info["tables"] = tableNames
+		}
+
 	case "sqlite":
 		// 获取 SQLite 版本
 		version, err := db.GetValue(ctx, "SELECT sqlite_version()")
@@ -222,6 +269,16 @@ func (dm *DatabaseManager) GetDatabaseInfo(ctx context.Context) (map[string]inte
 		// 数据库文件路径
 		if len(dm.config.Link) > 7 {
 			info["database_file"] = dm.config.Link[7:]
+		}
+
+		// 获取表信息
+		tables, err := db.GetAll(ctx, "SELECT name FROM sqlite_master WHERE type='table'")
+		if err == nil {
+			tableNames := make([]string, 0)
+			for _, table := range tables {
+				tableNames = append(tableNames, table["name"].String())
+			}
+			info["tables"] = tableNames
 		}
 	}
 

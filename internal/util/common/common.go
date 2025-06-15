@@ -44,18 +44,23 @@ func PrintShellHelp() {
 
 // InitDatabase 初始化数据库
 func InitDatabase(ctx g.Ctx) error {
+	g.Log().Info(ctx, "开始初始化数据库...")
+
 	dbManager := service.NewDatabaseManager()
 
 	// 初始化数据库连接
 	if err := dbManager.Initialize(ctx); err != nil {
+		g.Log().Errorf(ctx, "数据库连接初始化失败: %v", err)
 		return err
 	}
 
-	// 创建必要的数据表（可选）
+	// 创建必要的数据表（智能检查，避免重复创建）
 	if err := dbManager.CreateTables(ctx); err != nil {
-		g.Log().Warning(ctx, "创建数据表失败（可能已存在）:", err)
+		g.Log().Errorf(ctx, "数据表创建失败: %v", err)
+		return err
 	}
 
+	g.Log().Info(ctx, "数据库初始化完成")
 	return nil
 }
 
@@ -85,6 +90,9 @@ func ShowDatabaseInfo(ctx g.Ctx) error {
 	}
 	if dbFile, ok := info["database_file"]; ok {
 		g.Log().Infof(ctx, "数据库文件: %v", dbFile)
+	}
+	if tables, ok := info["tables"]; ok {
+		g.Log().Infof(ctx, "现有数据表: %v", tables)
 	}
 	g.Log().Info(ctx, "=====================")
 
