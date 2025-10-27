@@ -107,7 +107,7 @@ func parseJavaProcess(processLine string) *JavaProcessInfo {
 	// 检查是否为Docker中的进程
 	isDocker := checkIfDockerProcess(pid)
 
-	ports := getTCPPorts(pid)
+	ports := getTCPPorts(pid, isDocker)
 	cmdLinePorts := extractPortFromCommand(command)
 	allPorts := mergePorts(ports, cmdLinePorts)
 	jarDir := getJarDirectory(pid, command)
@@ -184,7 +184,13 @@ func checkIfDockerProcess(pid int) bool {
 }
 
 // GetTCPPorts 返回一个进程所使用的所有 TCP 端口。
-func getTCPPorts(pid int) []string {
+func getTCPPorts(pid int, isDocker bool) []string {
+
+	if isDocker {
+		// Docker容器：使用docker inspect
+		return getDockerContainerPorts(pid)
+	}
+
 	// 首先尝试使用ss命令，只获取TCP端口
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("ss -tnlp | grep %d", pid))
 	output, err := cmd.Output()
@@ -207,6 +213,76 @@ func getTCPPorts(pid int) []string {
 	}
 
 	return ports
+}
+
+// 获取Docker容器的端口映射
+func getDockerContainerPorts(pid int) []string {
+	// 1. 获取容器ID
+	containerID := getContainerID(pid)
+	if containerID == "" {
+		return nil
+	}
+
+	// 2. 使用docker inspect获取端口映射
+	cmd := exec.Command("docker", "inspect", "--format",
+		"{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{$p}} {{end}}{{end}}",
+		containerID)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	// 3. 解析端口（格式如: 8080/tcp 9090/tcp）
+	var ports []string
+	portMap := make(map[string]bool)
+
+	outputStr := strings.TrimSpace(string(output))
+	if outputStr == "" {
+		return nil
+	}
+
+	for _, portStr := range strings.Fields(outputStr) {
+		// 提取端口号，去掉 /tcp 或 /udp
+		parts := strings.Split(portStr, "/")
+		if len(parts) > 0 {
+			port := parts[0]
+			// 验证是否为数字
+			if _, err := strconv.Atoi(port); err == nil {
+				if !portMap[port] {
+					ports = append(ports, port)
+					portMap[port] = true
+				}
+			}
+		}
+	}
+
+	return ports
+}
+
+// 从cgroup获取完整的容器ID
+func getContainerID(pid int) string {
+	cgroupPath := fmt.Sprintf("/proc/%d/cgroup", pid)
+	content, err := ioutil.ReadFile(cgroupPath)
+	if err != nil {
+		return ""
+	}
+
+	patterns := []string{
+		`/docker/([a-f0-9]{64})`, // 完整64位ID
+		`/docker-([a-f0-9]{64})\.scope`,
+		`/system\.slice/docker-([a-f0-9]{64})\.scope`,
+	}
+
+	cgroupContent := string(content)
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(cgroupContent)
+		if len(matches) > 1 {
+			return matches[1]
+		}
+	}
+
+	return ""
 }
 
 // parsePortsFromOutput parses ports from command output
