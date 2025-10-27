@@ -1,4 +1,5 @@
-避免中文路径
+1. 避免中文路径
+2. 使用`omniscient`之前先安装`autostart`
 
 # run omniscient
 > root 运行，要不然有些命令会失效
