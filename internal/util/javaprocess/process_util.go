@@ -183,9 +183,7 @@ func checkIfDockerProcess(pid int) bool {
 	return strings.Contains(string(content), "docker")
 }
 
-// 已移除不需要的函数
-
-// GetTCPPorts returns all TCP ports used by a process
+// GetTCPPorts 返回一个进程所使用的所有 TCP 端口。
 func getTCPPorts(pid int) []string {
 	// 首先尝试使用ss命令，只获取TCP端口
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("ss -tnlp | grep %d", pid))
