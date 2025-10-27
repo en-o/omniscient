@@ -49,6 +49,8 @@ func (dm *DatabaseManager) Initialize(ctx context.Context) error {
 		return fmt.Errorf("读取数据库配置失败: %v", err)
 	}
 
+	// 确保配置中的 Type 字段被正确设置
+	config.Type = dbType
 	dm.config = config
 
 	// 如果是 SQLite，确保数据目录存在

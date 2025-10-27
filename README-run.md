@@ -34,7 +34,7 @@
    > echo 输出 PID=$(ss -tlnp | grep ":7777" | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2)
    
    
-   1. 指定配置文件`./omniscient run --gf.gcfg.file=./config.prod.yaml`
+   1. 指定配置文件`./omniscient run --gf.gcfg.file=./config.prod.yaml` or `./omniscient sh config ./config.prod.yaml`
    2. 直接运行`./omniscient run` 默认会加载当前目录下`config.prod.yaml`配置文件[如果当前没有会加载内置的配置文件]
    3. 后台运行请看启动脚本
    ```

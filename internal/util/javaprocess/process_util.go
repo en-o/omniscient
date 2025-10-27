@@ -220,7 +220,8 @@ func getDockerContainerPorts(pid int) []string {
 	// 1. 获取容器ID
 	containerID := getContainerID(pid)
 	if containerID == "" {
-		return nil
+		// 如果无法获取容器ID，尝试使用传统方法
+		return getTCPPortsFromProc(pid)
 	}
 
 	// 2. 使用docker inspect获取端口映射
@@ -229,7 +230,14 @@ func getDockerContainerPorts(pid int) []string {
 		containerID)
 	output, err := cmd.Output()
 	if err != nil {
-		return nil
+		// docker inspect 失败，尝试备用方法
+		// 可能是因为容器ID是短ID，尝试使用 docker ps 来匹配
+		ports := getPortsFromDockerPS(containerID)
+		if len(ports) > 0 {
+			return ports
+		}
+		// 如果还是失败，使用 /proc 文件系统
+		return getTCPPortsFromProc(pid)
 	}
 
 	// 3. 解析端口（格式如: 8080/tcp 9090/tcp）
@@ -238,7 +246,8 @@ func getDockerContainerPorts(pid int) []string {
 
 	outputStr := strings.TrimSpace(string(output))
 	if outputStr == "" {
-		return nil
+		// 没有端口映射，尝试从容器内部获取监听端口
+		return getContainerInternalPorts(pid)
 	}
 
 	for _, portStr := range strings.Fields(outputStr) {
@@ -259,6 +268,47 @@ func getDockerContainerPorts(pid int) []string {
 	return ports
 }
 
+// getPortsFromDockerPS 使用 docker ps 获取端口信息（作为备用方案）
+func getPortsFromDockerPS(containerID string) []string {
+	// 使用短ID的前12位
+	shortID := containerID
+	if len(containerID) > 12 {
+		shortID = containerID[:12]
+	}
+
+	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("id=%s", shortID),
+		"--format", "{{.Ports}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	// 解析端口格式: 0.0.0.0:8080->8080/tcp, 0.0.0.0:9090->9090/tcp
+	var ports []string
+	portMap := make(map[string]bool)
+
+	// 正则匹配端口号
+	re := regexp.MustCompile(`->(\d+)/tcp`)
+	matches := re.FindAllStringSubmatch(string(output), -1)
+
+	for _, match := range matches {
+		if len(match) > 1 {
+			port := match[1]
+			if !portMap[port] {
+				ports = append(ports, port)
+				portMap[port] = true
+			}
+		}
+	}
+
+	return ports
+}
+
+// getContainerInternalPorts 从容器内部获取监听端口（最后的备用方案）
+func getContainerInternalPorts(pid int) []string {
+	return getTCPPortsFromProc(pid)
+}
+
 // 从cgroup获取完整的容器ID
 func getContainerID(pid int) string {
 	cgroupPath := fmt.Sprintf("/proc/%d/cgroup", pid)
@@ -267,18 +317,37 @@ func getContainerID(pid int) string {
 		return ""
 	}
 
+	cgroupContent := string(content)
+
+	// 支持多种 cgroup 格式的正则表达式模式
 	patterns := []string{
-		`/docker/([a-f0-9]{64})`, // 完整64位ID
+		// 完整64位容器ID
+		`/docker/([a-f0-9]{64})`,
 		`/docker-([a-f0-9]{64})\.scope`,
 		`/system\.slice/docker-([a-f0-9]{64})\.scope`,
+
+		// 短容器ID（12位或更短）
+		`/docker/([a-f0-9]{12,})`,
+		`/docker-([a-f0-9]{12,})\.scope`,
+		`/system\.slice/docker-([a-f0-9]{12,})\.scope`,
+
+		// cgroup v2 格式
+		`docker-([a-f0-9]{12,})\.scope`,
+
+		// Kubernetes pod 容器格式
+		`/kubepods/[^/]+/pod[^/]+/([a-f0-9]{64})`,
+		`/kubepods\.slice/[^/]+/([a-f0-9]{64})`,
 	}
 
-	cgroupContent := string(content)
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
 		matches := re.FindStringSubmatch(cgroupContent)
 		if len(matches) > 1 {
-			return matches[1]
+			containerID := matches[1]
+			// 验证提取的ID是否有效
+			if len(containerID) >= 12 {
+				return containerID
+			}
 		}
 	}
 
