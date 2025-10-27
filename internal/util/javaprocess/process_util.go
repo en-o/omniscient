@@ -235,7 +235,7 @@ func parsePortsFromOutput(output string) []string {
 	return ports
 }
 
-// ExtractPortFromCommand extracts port numbers from Java command line arguments
+// ExtractPortFromCommand 从 Java 命令行参数中提取端口号
 func extractPortFromCommand(command string) []string {
 	var ports []string
 	portMap := make(map[string]bool)
