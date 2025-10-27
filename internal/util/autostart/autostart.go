@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// 调用 autostart命令行工具进行自启动服务管理
+
 // IsAutostartInstalled 检查autostart命令是否安装
 func IsAutostartInstalled() bool {
 	cmd := exec.Command("which", "autostart")
