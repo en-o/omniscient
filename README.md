@@ -46,6 +46,7 @@ systemd 219 (CentOS Linux release 7.9.2009 (Core))
 autostart help
 
 # 聚合网关
+> 进行管理工具的前端集成
 ## script
 ```bash
 # dir
