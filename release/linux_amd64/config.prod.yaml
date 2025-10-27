@@ -13,7 +13,7 @@ logger:
 # https://goframe.org/docs/core/gdb-config-file
 database:
   # 数据库类型选择: mysql 或 sqlite
-  type: "sqlite"  # 可以改为 "mysql"
+  type: "mysql"  # 可以改为 "mysql"
   sqlite:
     type: sqlite
     link: "sqlite::@file(./data/omniscient.sqlite3)"
