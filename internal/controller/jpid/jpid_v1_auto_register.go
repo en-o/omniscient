@@ -9,6 +9,7 @@ import (
 	"omniscient/internal/util/javaprocess"
 )
 
+// AutoRegister 自动注册服务 - 刷新被遗漏的在线Java进程
 func (c *ControllerV1) AutoRegister(ctx context.Context, req *v1.AutoRegisterReq) (res *v1.AutoRegisterRes, err error) {
 
 	// 获取在线Java进程信息
