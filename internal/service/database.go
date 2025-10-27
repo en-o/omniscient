@@ -53,6 +53,15 @@ func (dm *DatabaseManager) Initialize(ctx context.Context) error {
 	config.Type = dbType
 	dm.config = config
 
+	// 打印数据库配置信息，方便debug
+	g.Log().Infof(ctx, "========== 数据库配置信息 ==========")
+	g.Log().Infof(ctx, "数据库类型: %s", config.Type)
+	g.Log().Infof(ctx, "连接字符串: %s", config.Link)
+	g.Log().Infof(ctx, "最大空闲连接数: %d", config.MaxIdleConnCount)
+	g.Log().Infof(ctx, "最大打开连接数: %d", config.MaxOpenConnCount)
+	g.Log().Infof(ctx, "调试模式: %v", config.Debug)
+	g.Log().Infof(ctx, "=====================================")
+
 	// 如果是 SQLite，确保数据目录存在
 	if dbType == "sqlite" {
 		if err := dm.ensureSQLiteDir(); err != nil {
