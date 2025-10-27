@@ -17,7 +17,7 @@ gfcli:
     name:     "omniscient"
     arch:     "amd64,arm"
     system:   "linux"
-    packSrc:  "resource,manifest,data"
+    packSrc:  "resource,manifest"
     mod: ""
     cgo: 0
     version:  "v1.0.0.4"
